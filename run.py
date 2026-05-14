@@ -1,0 +1,24 @@
+import os
+import sys
+
+# Add the backend directory to the search path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
+
+from app import app, socketio, run_ml_training_if_needed
+from threading import Thread
+
+if __name__ == '__main__':
+    print("=" * 60)
+    print("OVERSIGHT: Adaptive Threat Engine")
+    print("=" * 60)
+    print("Initializing security modules...")
+    print("Starting AI anomaly detection engine...")
+    print("Access the dashboard at: http://localhost:5000")
+    print("=" * 60)
+
+    # Start ML training check in background
+    training_thread = Thread(target=run_ml_training_if_needed, daemon=True)
+    training_thread.start()
+
+    # Run the Flask-SocketIO app
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)

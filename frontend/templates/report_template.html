@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OVERSIGHT | Total Audit Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #FAFAFA;
+            background: #050505;
+            padding: 20px;
+        }
+
+        .report-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #0A0A0A;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #0A0A0A;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .header .subtitle {
+            color: rgba(255,255,255,0.6);
+            font-size: 1.1em;
+        }
+
+        .content { padding: 40px; }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #111;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .section h2 {
+            color: #FAFAFA;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .risk-score {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #161616 0%, #0a0a0a 100%);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .risk-score .score {
+            font-size: 4.5em;
+            font-weight: 800;
+            margin: 10px 0;
+            letter-spacing: -2px;
+        }
+
+        .risk-score.score-high .score { color: #10B981; }
+        .risk-score.score-medium .score { color: #F59E0B; }
+        .risk-score.score-low .score { color: #F97316; }
+        .risk-score.score-critical .score { color: #EF4444; }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric {
+            background: #1A1A1A;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .metric-label {
+            font-size: 0.85em;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #FAFAFA;
+            margin-top: 5px;
+        }
+
+        .recommendations-list { list-style: none; }
+
+        .recommendations-list li {
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #1A1A1A;
+            border-radius: 6px;
+            border-left: 4px solid;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            border-right: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .recommendations-list li.priority-critical { border-left-color: #EF4444; }
+        .recommendations-list li.priority-high { border-left-color: #F97316; }
+        .recommendations-list li.priority-medium { border-left-color: #F59E0B; }
+        .recommendations-list li.priority-low { border-left-color: #10B981; }
+
+        .recommendations-list .rec-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #FAFAFA;
+        }
+
+        .recommendations-list .rec-desc {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.95em;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.9em;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        @media print {
+            body { background: white; color: black; }
+            .report-container { box-shadow: none; border: none; }
+            .section, .metric, .risk-score, .recommendations-list li { background: white; border: 1px solid #ccc; }
+            .metric-value, .section h2, .rec-title, .header h1 { color: black; }
+            .header { background: white; color: black; border-bottom: 2px solid black; }
+            .header .subtitle, .metric-label, .rec-desc, .footer { color: #444; }
+        }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="header">
+            <h1>OVERSIGHT</h1>
+            <div class="subtitle">System Integrity & Total Audit Report</div>
+        </div>
+
+        <div class="content">
+            {% macro render_metric(label, value) %}
+            <div class="metric">
+                <div class="metric-label">{{ label }}</div>
+                <div class="metric-value">{{ value }}</div>
+            </div>
+            {% endmacro %}
+
+            {% if risk %}
+            <div class="risk-score score-{% if risk.risk_color == 'green' %}high{% elif risk.risk_color == 'yellow' %}medium{% elif risk.risk_color == 'orange' %}low{% else %}critical{% endif %}">
+                <h2>Overall Security Score</h2>
+                <div class="score">{{ risk.score or 0 }}/100</div>
+                <p>{{ risk.risk_level or 'Unknown' }}</p>
+                <p>{{ risk.summary or '' }}</p>
+            </div>
+            {% endif %}
+
+            {% if wifi %}
+            <div class="section">
+                <h2>Wi-Fi Security</h2>
+                {% if wifi.connected %}
+                <div class="metric-grid">
+                    {{ render_metric('Network', wifi.network_name) }}
+                    {{ render_metric('Security Type', wifi.security_type) }}
+                    {{ render_metric('Signal Strength', wifi.signal_strength) }}
+                    {{ render_metric('Risk Level', wifi.risk_level) }}
+                </div>
+                {% else %}
+                <p>{{ wifi.message }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if ports %}
+            <div class="section">
+                <h2>Open Ports</h2>
+                <div class="metric-grid">
+                    {{ render_metric('Open Ports', ports.open_ports_count) }}
+                    {{ render_metric('High Risk', ports.high_risk) }}
+                    {{ render_metric('Medium Risk', ports.medium_risk) }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if vulnerabilities %}
+            <div class="section">
+                <h2>Vulnerabilities</h2>
+                <div class="metric-grid">
+                    {{ render_metric('Total Issues', vulnerabilities.total_vulnerabilities) }}
+                    {{ render_metric('Critical', vulnerabilities.critical_count) }}
+                    {{ render_metric('High', vulnerabilities.high_count) }}
+                    {{ render_metric('Medium', vulnerabilities.medium_count) }}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if recommendations %}
+            <div class="section">
+                <h2>Recommendations</h2>
+                <ul class="recommendations-list">
+                    {% for rec in recommendations.recommendations[:10] %}
+                    <li class="priority-{{ rec.priority }}">
+                        <div class="rec-title">{{ rec.title }}</div>
+                        <div class="rec-desc">{{ rec.description }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>Network Security Dashboard</p>
+            <p>This report contains security information about your system and network.</p>
+        </div>
+    </div>
+</body>
+</html>
