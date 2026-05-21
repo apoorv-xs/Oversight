@@ -5,28 +5,31 @@ Runs in a background thread to intercept raw network traffic.
 import scapy.all as scapy
 from threading import Thread, Event
 import time
-import socket
 
 class PacketCaptureThread(Thread):
     """
     Background thread dedicated to capturing network packets using the Scapy sniffer.
     """
 
-    def __init__(self, interface, callback, stop_event):
+    def __init__(self, interface, callback):
         """
         Initialize the capture thread.
         
         Args:
             interface (str): The name of the network interface to sniff on.
             callback (function): Function to call for each captured packet.
-            stop_event (Event): Threading event to signal capture termination.
         """
         super().__init__()
         self.interface = interface
         self.callback = callback
-        self.stop_event = stop_event
         self.packet_count = 0
+        self.stop_event = Event()
+        self.stop_event.set()
         self.sniffer = None
+
+    def stop(self):
+        """Signals the sniffer thread to terminate."""
+        self.stop_event.clear()
 
     def run(self):
         """Executes the Scapy sniffing loop."""
@@ -54,9 +57,26 @@ class PacketCaptureThread(Thread):
                 store=False
             )
         except Exception as e:
-            print(f"[CRITICAL] Scapy sniffer encountered an error: {e}")
+            err_msg = str(e)
+            print(f"[CRITICAL] Scapy sniffer encountered an error: {err_msg}")
+            try:
+                import logging
+                logging.error(f"[CRITICAL] Scapy sniffer encountered an error: {err_msg}")
+            except:
+                pass
+            try:
+                import globals
+                globals.capture_error = err_msg
+            except:
+                pass
 
         print(f"[INFO] Capture session terminated. Total packets captured: {self.packet_count}")
+        try:
+            import globals
+            globals.capture_running.clear()
+        except Exception as ex:
+            print(f"[WARNING] Could not clear capture_running event: {ex}")
+
 
 
     def extract_packet_info(self, packet):

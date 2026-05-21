@@ -1,0 +1,169 @@
+/* --------------------------------------
+   Toast Notifications
+   -------------------------------------- */
+.toast-container {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(10, 10, 10, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--status-danger);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    min-width: 400px;
+    box-shadow: 0 10px 30px rgba(255, 42, 42, 0.2);
+    animation: toastSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast.fade-out {
+    animation: toastFadeOut 0.4s ease forwards;
+}
+
+@keyframes toastSlideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastFadeOut {
+    to { opacity: 0; transform: translateY(-20px) scale(0.95); }
+}
+
+.toast-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--status-danger);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: var(--space-2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.toast-body {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* --------------------------------------
+   Notification Overlay
+   -------------------------------------- */
+.btn-notif {
+    position: relative;
+    padding: var(--space-2);
+}
+
+.notif-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--status-danger);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    transform: translate(25%, -25%);
+}
+
+.notif-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.notif-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.notif-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    background: var(--bg-surface);
+    backdrop-filter: blur(20px);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.notif-overlay.active .notif-panel {
+    transform: translateX(0);
+}
+
+.notif-panel-header {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.notif-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.notif-item {
+    background: rgba(255, 42, 42, 0.05);
+    border-left: 3px solid var(--status-danger);
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+}
+
+.notif-time {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-bottom: 4px;
+}
+
+.notif-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.notif-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.notif-empty {
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.85rem;
+    margin-top: var(--space-8);
+}

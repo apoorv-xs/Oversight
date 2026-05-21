@@ -1,8 +1,8 @@
+import os
 import socket
 import time
 import random
 import threading
-from scapy.all import IP, UDP, send, TCP
 
 def udp_flood(target_ip, target_port, duration=30):
     """Generates a burst of UDP traffic to simulate anomalous activity."""
@@ -11,7 +11,7 @@ def udp_flood(target_ip, target_port, duration=30):
     sent = 0
     
     # Create a random payload
-    payload = random._urandom(1024)
+    payload = os.urandom(1024)
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     

@@ -43,3 +43,9 @@ dataset/anomaly_samples.csv
 model/*.onnx
 model/*.pkl
 model/*.json
+
+# GeoIP database files
+backend/data/*.mmdb
+
+# Scratch/utility scripts
+utilities/scripts/test_*.py

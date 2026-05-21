@@ -6,6 +6,7 @@ ensuring compatibility with the autoencoder.
 import pandas as pd
 import time
 from collections import defaultdict
+import threading
 
 # 14 baseline features required by the neural network
 LIVE_FEATURES = [
@@ -20,6 +21,7 @@ class FlowManager:
         self.flows = {}
         self.timeout = timeout
         self.lock_time = time.time()
+        self.lock = threading.Lock()
 
     def update_flow(self, packet):
         """Update active flows with new packet data (Scapy packet)."""
@@ -64,82 +66,85 @@ class FlowManager:
         reverse_key = (dst, src, dport, sport, proto)
         current_time = time.time()
 
-        if flow_key in self.flows:
-            flow = self.flows[flow_key]
-            flow['last_seen'] = current_time
-            flow['spkts'] += 1
-            flow['sbytes'] += size
-            flow['sttl'] = ttl
-            if window:
-                flow['swin'] = window
+        with self.lock:
+            if flow_key in self.flows:
+                flow = self.flows[flow_key]
+                flow['last_seen'] = current_time
+                flow['spkts'] += 1
+                flow['sbytes'] += size
+                flow['sttl'] = ttl
+                if window:
+                    flow['swin'] = window
 
-        elif reverse_key in self.flows:
-            flow = self.flows[reverse_key]
-            flow['last_seen'] = current_time
-            flow['dpkts'] += 1
-            flow['dbytes'] += size
-            flow['dttl'] = ttl
-            if window:
-                flow['dwin'] = window
+            elif reverse_key in self.flows:
+                flow = self.flows[reverse_key]
+                flow['last_seen'] = current_time
+                flow['dpkts'] += 1
+                flow['dbytes'] += size
+                flow['dttl'] = ttl
+                if window:
+                    flow['dwin'] = window
 
-        else:
-            self.flows[flow_key] = {
-                'start_time': current_time,
-                'last_seen': current_time,
-                'spkts': 1,
-                'sbytes': size,
-                'sttl': ttl,
-                'swin': window,
-                'dpkts': 0,
-                'dbytes': 0,
-                'dttl': 0,
-                'dwin': 0
-            }
+            else:
+                self.flows[flow_key] = {
+                    'start_time': current_time,
+                    'last_seen': current_time,
+                    'spkts': 1,
+                    'sbytes': size,
+                    'sttl': ttl,
+                    'swin': window,
+                    'dpkts': 0,
+                    'dbytes': 0,
+                    'dttl': 0,
+                    'dwin': 0
+                }
 
-        return flow_key if flow_key in self.flows else reverse_key
+            return flow_key if flow_key in self.flows else reverse_key
 
     def get_expired_flows(self):
         """Calculate final statistics for flows that exceeded the timeout threshold."""
         current_time = time.time()
-        expired_keys = [k for k, v in self.flows.items() if (current_time - v['last_seen']) > self.timeout]
-
         expired_data = []
-        for key in expired_keys:
-            flow = self.flows.pop(key)
-            src, dst, sport, dport, proto = key
-            
-            duration = flow['last_seen'] - flow['start_time']
-            if duration <= 0:
-                duration = 0.001  # Avoid division by zero
 
-            # Map flow stats to UNSW-NB15 features
-            stats = {feat: 0 for feat in LIVE_FEATURES}
-            stats['src'] = src
-            stats['dst'] = dst
-            stats['sport'] = sport
-            stats['dport'] = dport
-            stats['proto'] = proto
+        with self.lock:
+            expired_keys = [k for k, v in self.flows.items() if (current_time - v['last_seen']) > self.timeout]
 
-            stats['dur'] = duration
-            stats['spkts'] = flow['spkts']
-            stats['dpkts'] = flow['dpkts']
-            stats['sbytes'] = flow['sbytes']
-            stats['dbytes'] = flow['dbytes']
+            for key in expired_keys:
+                flow = self.flows.pop(key)
+                src, dst, sport, dport, proto = key
+                
+                duration = flow['last_seen'] - flow['start_time']
+                if duration <= 0:
+                    duration = 0.001  # Avoid division by zero
 
-            total_pkts = flow['spkts'] + flow['dpkts']
-            stats['rate'] = total_pkts / duration
+                # Map flow stats to UNSW-NB15 features
+                stats = {feat: 0 for feat in LIVE_FEATURES}
+                stats['src'] = src
+                stats['dst'] = dst
+                stats['sport'] = sport
+                stats['dport'] = dport
+                stats['proto'] = proto
 
-            stats['sttl'] = flow['sttl']
-            stats['dttl'] = flow['dttl']
-            stats['sload'] = (flow['sbytes'] * 8) / duration
-            stats['dload'] = (flow['dbytes'] * 8) / duration
+                stats['dur'] = duration
+                stats['spkts'] = flow['spkts']
+                stats['dpkts'] = flow['dpkts']
+                stats['sbytes'] = flow['sbytes']
+                stats['dbytes'] = flow['dbytes']
 
-            stats['swin'] = flow['swin']
-            stats['dwin'] = flow['dwin']
-            stats['smean'] = flow['sbytes'] / flow['spkts'] if flow['spkts'] > 0 else 0
-            stats['dmean'] = flow['dbytes'] / flow['dpkts'] if flow['dpkts'] > 0 else 0
+                total_pkts = flow['spkts'] + flow['dpkts']
+                stats['rate'] = total_pkts / duration
 
-            expired_data.append(stats)
+                stats['sttl'] = flow['sttl']
+                stats['dttl'] = flow['dttl']
+                stats['sload'] = (flow['sbytes'] * 8) / duration
+                stats['dload'] = (flow['dbytes'] * 8) / duration
+
+                stats['swin'] = flow['swin']
+                stats['dwin'] = flow['dwin']
+                stats['smean'] = flow['sbytes'] / flow['spkts'] if flow['spkts'] > 0 else 0
+                stats['dmean'] = flow['dbytes'] / flow['dpkts'] if flow['dpkts'] > 0 else 0
+
+                expired_data.append(stats)
 
         return pd.DataFrame(expired_data) if expired_data else pd.DataFrame()
 
@@ -148,19 +153,20 @@ class FlowManager:
         current_time = time.time()
         active_flows = []
 
-        for key, flow in self.flows.items():
-            if (current_time - flow['last_seen']) <= self.timeout:
-                src, dst, sport, dport, proto = key
-                active_flows.append({
-                    'src': src,
-                    'dst': dst,
-                    'sport': sport,
-                    'dport': dport,
-                    'protocol': proto,
-                    'duration': current_time - flow['start_time'],
-                    'packet_count': flow['spkts'] + flow['dpkts'],
-                    'byte_count': flow['sbytes'] + flow['dbytes']
-                })
+        with self.lock:
+            for key, flow in self.flows.items():
+                if (current_time - flow['last_seen']) <= self.timeout:
+                    src, dst, sport, dport, proto = key
+                    active_flows.append({
+                        'src': src,
+                        'dst': dst,
+                        'sport': sport,
+                        'dport': dport,
+                        'protocol': proto,
+                        'duration': current_time - flow['start_time'],
+                        'packet_count': flow['spkts'] + flow['dpkts'],
+                        'byte_count': flow['sbytes'] + flow['dbytes']
+                    })
 
         return active_flows
 
@@ -168,12 +174,13 @@ class FlowManager:
         """Get top N talkers by byte count."""
         talkers = defaultdict(lambda: {'bytes': 0, 'packets': 0})
 
-        for key, flow in self.flows.items():
-            src, dst, _, _, _ = key
-            talkers[src]['bytes'] += flow['sbytes']
-            talkers[src]['packets'] += flow['spkts']
-            talkers[dst]['bytes'] += flow['dbytes']
-            talkers[dst]['packets'] += flow['dpkts']
+        with self.lock:
+            for key, flow in self.flows.items():
+                src, dst, _, _, _ = key
+                talkers[src]['bytes'] += flow['sbytes']
+                talkers[src]['packets'] += flow['spkts']
+                talkers[dst]['bytes'] += flow['dbytes']
+                talkers[dst]['packets'] += flow['dpkts']
 
         sorted_talkers = sorted(talkers.items(), key=lambda x: x[1]['bytes'], reverse=True)
         return [{'ip': ip, **stats} for ip, stats in sorted_talkers[:n]]
@@ -182,11 +189,12 @@ class FlowManager:
         """Get top consumed services by byte count."""
         services = defaultdict(lambda: 0)
 
-        for key, flow in self.flows.items():
-            _, _, sport, dport, _ = key
-            # Assume the lower port is the service port (e.g., 443 vs 52341)
-            svc_port = min(sport, dport) if min(sport, dport) > 0 else max(sport, dport)
-            services[svc_port] += flow['sbytes'] + flow['dbytes']
+        with self.lock:
+            for key, flow in self.flows.items():
+                _, _, sport, dport, _ = key
+                # Assume the lower port is the service port (e.g., 443 vs 52341)
+                svc_port = min(sport, dport) if min(sport, dport) > 0 else max(sport, dport)
+                services[svc_port] += flow['sbytes'] + flow['dbytes']
 
         sorted_services = sorted(services.items(), key=lambda x: x[1], reverse=True)
         return [{'port': port, 'bytes': bytes_count} for port, bytes_count in sorted_services[:n]]
@@ -196,19 +204,26 @@ class FlowManager:
         current_time = time.time()
         flows_list = []
         
-        for key, flow in self.flows.items():
-            src, dst, _, dport, _ = key
-            duration = current_time - flow['start_time']
-            flows_list.append({
-                'src': src,
-                'dst': dst,
-                'port': dport,
-                'duration': duration
-            })
+        with self.lock:
+            for key, flow in self.flows.items():
+                src, dst, _, dport, _ = key
+                duration = current_time - flow['start_time']
+                flows_list.append({
+                    'src': src,
+                    'dst': dst,
+                    'port': dport,
+                    'duration': duration
+                })
 
         sorted_flows = sorted(flows_list, key=lambda x: x['duration'], reverse=True)
         return sorted_flows[:n]
 
     def clear_flows(self):
         """Clear all flows."""
-        self.flows.clear()
+        with self.lock:
+            self.flows.clear()
+
+    def get_active_flow_count(self):
+        """Get the count of active flows thread-safely."""
+        with self.lock:
+            return len(self.flows)

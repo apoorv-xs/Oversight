@@ -28,3 +28,4 @@ fpdf2==2.7.7
 # Inference & External APIs
 onnxruntime>=1.16.0
 requests>=2.31.0
+geoip2>=4.8.0

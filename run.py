@@ -1,6 +1,12 @@
 import os
 import sys
 
+# Ensure UTF-8 output encoding for Windows command prompt
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 # Add the backend directory to the search path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import copy
 import time
 import globals
-from globals import traffic_stats, traffic_stats_lock, capture_running, flow_manager
+from globals import traffic_stats, traffic_stats_lock, capture_running, flow_manager, is_admin_user, reset_traffic_stats
 from ai_modules.packet_capture import list_interfaces_safe, PacketCaptureThread
 from services.packet_handler import packet_callback
 
@@ -23,7 +23,7 @@ def get_traffic_stats():
     """Retrieves real-time packet statistics, flow counts, and anomaly metrics."""
     try:
         with traffic_stats_lock:
-            traffic_stats['active_flows'] = len(flow_manager.flows)
+            traffic_stats['active_flows'] = flow_manager.get_active_flow_count()
             traffic_stats['last_update'] = datetime.now().isoformat()
             stats_copy = copy.deepcopy(traffic_stats)
 
@@ -35,6 +35,12 @@ def get_traffic_stats():
 def start_capture():
     """Initiates the Scapy packet capture thread on the specified or default interface."""
     try:
+        # Check for Administrator/root privileges (soft warning only)
+        is_admin = is_admin_user()
+        warning_msg = None
+        if not is_admin:
+            warning_msg = 'Running without Administrator/root privileges. Raw packet interception might be restricted depending on system policies.'
+
         data = request.get_json() or {}
         interface_name = data.get('interface', None)
 
@@ -59,11 +65,19 @@ def start_capture():
             if not selected_interface:
                 selected_interface = interfaces[0]
 
+        # Reset traffic statistics and flow manager tracking before starting new session
+        print(f"[{datetime.now()}] /api/start-capture called. Resetting traffic_stats.")
+
+        reset_traffic_stats()
+        flow_manager.clear_flows()
+
+        print(f"[{datetime.now()}] traffic_stats reset completed. total_packets={traffic_stats.get('total_packets')}")
+
+        globals.capture_error = None
         capture_running.set()
         globals.capture_thread = PacketCaptureThread(
             selected_interface['name'],
-            packet_callback,
-            capture_running
+            packet_callback
         )
         globals.capture_thread.daemon = True
         globals.capture_thread.start()
@@ -71,22 +85,40 @@ def start_capture():
         return jsonify({
             'status': 'success',
             'message': f'Capture started on {selected_interface["name"]}',
-            'interface': selected_interface
+            'interface': selected_interface,
+            'warning': warning_msg
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @ai_bp.route('/api/stop-capture', methods=['POST'])
 def stop_capture():
-    """Signals the capture thread to terminate and resets the capture state."""
+    """Signals the capture thread to terminate, flushes training data, and resets capture state."""
     try:
+        print(f"[{datetime.now()}] /api/stop-capture called.")
+
         if not capture_running.is_set():
             return jsonify({'status': 'error', 'message': 'No capture running'}), 400
 
+        if globals.capture_thread:
+            globals.capture_thread.stop()
         capture_running.clear()
         time.sleep(0.5)  # Allow thread cleanup time
 
-        return jsonify({'status': 'success', 'message': 'Capture stopped'})
+        # Flush any remaining buffered normal flows to the training baseline CSV
+        from globals import baseline_manager
+        baseline_manager.flush()
+        print(f"[{datetime.now()}] Baseline buffer flushed to disk on engine stop.")
+
+        # Reset traffic stats so next engine start begins from 0
+        reset_traffic_stats()
+
+        # Reset the flow manager so stale flows don't carry over
+        flow_manager.clear_flows()
+
+        print(f"[{datetime.now()}] Traffic stats and flow manager reset.")
+
+        return jsonify({'status': 'success', 'message': 'Capture stopped, data flushed to training baseline'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -94,13 +126,16 @@ def stop_capture():
 def get_capture_status():
     """Provides a quick status check to synchronize the frontend UI with the backend capture state."""
     with traffic_stats_lock:
-        traffic_stats['active_flows'] = len(flow_manager.flows)
+        traffic_stats['active_flows'] = flow_manager.get_active_flow_count()
         stats_copy = copy.deepcopy(traffic_stats)
+    
+    capture_err = getattr(globals, 'capture_error', None)
     return jsonify({
         'status': 'success',
         'data': {
             'capturing': capture_running.is_set(),
-            'stats': stats_copy
+            'stats': stats_copy,
+            'error': capture_err
         }
     })
 
@@ -129,8 +164,9 @@ def mark_normal():
         dst = data.get('dst')
         dport = data.get('dport')
         if src and dst and dport is not None:
-            from globals import manual_whitelist
-            manual_whitelist.add((str(src), str(dst), int(dport)))
+            from globals import manual_whitelist, manual_whitelist_lock
+            with manual_whitelist_lock:
+                manual_whitelist.add((str(src), str(dst), int(dport)))
         
         if not raw_features:
             return jsonify({'status': 'error', 'message': 'No raw features provided'}), 400
@@ -139,6 +175,67 @@ def mark_normal():
         baseline_manager.save_flow(raw_features)
         
         return jsonify({'status': 'success', 'message': 'Flow whitelisted and saved to baseline'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@ai_bp.route('/api/update-timeout', methods=['POST'])
+def update_timeout():
+    """
+    Dynamically updates the flow manager timeout.
+    """
+    try:
+        data = request.get_json() or {}
+        new_timeout = data.get('timeout')
+        if new_timeout is None:
+            return jsonify({'status': 'error', 'message': 'No timeout value provided'}), 400
+        
+        try:
+            new_timeout = float(new_timeout)
+        except ValueError:
+            return jsonify({'status': 'error', 'message': 'Invalid timeout value'}), 400
+
+        if new_timeout < 2 or new_timeout > 60:
+            return jsonify({'status': 'error', 'message': 'Timeout must be between 2 and 60 seconds'}), 400
+
+        flow_manager.timeout = new_timeout
+        
+        print(f"[{datetime.now()}] Flow manager timeout dynamically updated to {new_timeout}s.")
+        return jsonify({'status': 'success', 'message': f'Timeout updated to {new_timeout} seconds'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@ai_bp.route('/api/whitelist', methods=['GET'])
+def get_whitelist():
+    """
+    Returns the list of manually whitelisted connection vectors.
+    """
+    try:
+        from globals import manual_whitelist, manual_whitelist_lock
+        # Convert set of tuples to list of dicts for JSON representation
+        with manual_whitelist_lock:
+            whitelist_list = [{'src': item[0], 'dst': item[1], 'dport': item[2]} for item in manual_whitelist]
+        return jsonify({'status': 'success', 'data': whitelist_list})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@ai_bp.route('/api/whitelist/delete', methods=['POST'])
+def delete_whitelist():
+    """
+    Deletes a whitelisted connection vector.
+    """
+    try:
+        data = request.get_json() or {}
+        src = data.get('src')
+        dst = data.get('dst')
+        dport = data.get('dport')
+        if src and dst and dport is not None:
+            from globals import manual_whitelist, manual_whitelist_lock
+            entry = (str(src), str(dst), int(dport))
+            with manual_whitelist_lock:
+                if entry in manual_whitelist:
+                    manual_whitelist.remove(entry)
+                    return jsonify({'status': 'success', 'message': 'Entry removed from whitelist'})
+        return jsonify({'status': 'error', 'message': 'Entry not found in whitelist'}), 404
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

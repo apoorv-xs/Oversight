@@ -2,7 +2,8 @@ import os
 import sys
 
 # Ensure the backend directory is in the path
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(project_root, 'backend'))
 sys.path.append(os.path.join(project_root, 'backend', 'ai_modules'))
 
 try:

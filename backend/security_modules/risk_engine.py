@@ -69,6 +69,8 @@ class RiskScoreEngine:
                 'emoji': emoji,
                 'calculation_time': datetime.now().isoformat(),
                 'component_scores': {
+                    'wifi': round(wifi_score),
+                    'vulnerabilities': round(vuln_score),
                     'ports': round(port_score)
                 },
                 'risk_factors': factors,

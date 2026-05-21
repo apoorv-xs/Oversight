@@ -9,6 +9,14 @@
 
 ---
 
+## 🖥️ Dashboard Interface
+
+Below is a preview of the high-fidelity bento-grid OVERSIGHT threat monitoring dashboard in action:
+
+![Oversight AI Threat Dashboard](screenshots/dashboard_v2.png)
+
+---
+
 ## 🚀 Key Technical Highlights
 
 ### 1. AI-Driven Behavioral Analysis
@@ -24,6 +32,13 @@
 - **Autonomous Evolution**: Verification of "Normal" flows triggers background retraining sessions.
 - **Hot-Swapping**: New models and scalers are integrated into the live system without service interruption using thread-safe synchronization.
 
+### 4. Interactive 3D Globe Threat Focus & Auto-Pan
+- **Auto-Pan & Zoom**: Clicking on any threat vector in the left panel, anomaly toasts, or the alert history overlay dynamically plots the arc on the 3D globe and animates the camera to zoom into the remote target coordinates.
+- **Dynamic Arc Restoration**: The system automatically recovers and renders expired/pruned arcs instantly when an analyst clicks on an event in the dashboard logs.
+
+### 5. Local Traffic Visual Differentiation
+- **Subnet Badging**: Live network vectors and whitelisted exception bypass rules are continuously analyzed against private subnets (`127.x.x.x`, `10.x.x.x`, `192.168.x.x`, etc.) and automatically labeled with context-colored `LOCAL` badges.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -31,7 +46,7 @@
 - **Backend**: Python 3.10+, Flask, Flask-SocketIO (WebSockets)
 - **Networking**: Scapy (NDIS driver-level packet interception)
 - **AI/ML**: ONNX Runtime, Scikit-learn, NumPy, Pandas
-- **Frontend**: Vanilla HTML5, CSS3 (Bento Grid Layout), JavaScript (ES6+)
+- **Frontend**: Vanilla HTML5, CSS3 (Bento Grid Layout), JavaScript (ES6+), Globe.gl (Three.js/WebGL)
 
 ---
 

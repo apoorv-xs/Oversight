@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, jsonify
 from datetime import datetime
-import os
-from globals import PROJECT_ROOT, anomaly_model
+from globals import anomaly_model
 
 core_bp = Blueprint('core_bp', __name__)
 

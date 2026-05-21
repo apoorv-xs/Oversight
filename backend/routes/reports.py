@@ -3,8 +3,6 @@ from datetime import datetime
 import copy
 import csv
 import io
-import sys
-import os
 
 from globals import latest_results, latest_results_lock, traffic_stats, traffic_stats_lock
 from report_generator import ReportGenerator

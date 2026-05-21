@@ -1,10 +1,8 @@
 # handles the adaptive learning side - buffers normal traffic and retrains the model periodically
 import os
 import sys
-import time
 import pandas as pd
 from threading import Thread, Lock, Event
-from datetime import datetime
 
 # Ensure imports work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -60,6 +58,12 @@ class BaselineManager:
             print(f"hit {self._new_flow_count:,} new flows — triggering retrain")
             self._trigger_retrain()
 
+    def flush(self):
+        """Public method to flush any remaining buffered flows to disk (called on engine stop)."""
+        with self._buffer_lock:
+            self._flush_buffer()
+        print(f"[FLUSH] Flushed remaining baseline buffer to disk.")
+
     def _flush_buffer(self):
     # writes whatever is in the buffer to the csv file - must hold _buffer_lock before calling this
         if not self._buffer:
@@ -99,8 +103,8 @@ class BaselineManager:
             self._is_retraining.set()
             with self._buffer_lock:
                 self._flush_buffer()
+                self._new_flow_count = 0
             self._do_retrain()
-            self._new_flow_count = 0
         except Exception as e:
             print(f"retrain crashed: {e}")
         finally:

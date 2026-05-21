@@ -1,0 +1,188 @@
+/* --------------------------------------
+   Full Screen Globe Background
+   -------------------------------------- */
+/* --------------------------------------
+   Full Screen Globe Background (Centering and Responsive to Side Panels)
+   -------------------------------------- */
+#globeViz {
+    position: absolute;
+    top: 0;
+    left: var(--left-panel-width, 0px);
+    width: calc(100vw - var(--left-panel-width, 0px) - var(--right-panel-width, 0px));
+    height: 100vh;
+    z-index: 0;
+    transition: left 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --------------------------------------
+   UI Layer on Top of Globe
+   -------------------------------------- */
+.ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10;
+    pointer-events: none; /* Let clicks pass through to the globe */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Top Header */
+.top-nav-overlay {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) var(--space-6);
+    pointer-events: auto; /* Re-enable clicks */
+}
+
+/* Nav Actions */
+.nav-actions {
+    display: flex;
+    gap: var(--space-4);
+}
+
+/* --------------------------------------
+   Left Floating Terminal Overlay (Shrunk)
+   -------------------------------------- */
+.left-overlay {
+    position: absolute;
+    top: 70px;
+    left: var(--space-4);
+    width: 320px;
+    min-width: 240px;
+    max-width: 500px;
+    height: calc(100vh - 130px);
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    resize: horizontal;
+    overflow: hidden;
+}
+
+/* --------------------------------------
+   Right Floating Active Flows Overlay (Shrunk)
+   -------------------------------------- */
+.right-overlay {
+    position: absolute;
+    top: 70px;
+    right: var(--space-4);
+    width: 280px;
+    min-width: 220px;
+    max-width: 450px;
+    height: calc(100vh - 130px);
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    resize: horizontal;
+    overflow: hidden;
+    direction: rtl; /* For resize handle on the left */
+}
+
+.right-overlay > .glass-panel {
+    direction: ltr;
+}
+
+/* Collapsed Panel State */
+aside.collapsed {
+    height: auto !important;
+    width: auto !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    resize: none !important;
+}
+
+aside.collapsed .glass-panel {
+    height: auto !important;
+    padding: 8px 12px !important;
+}
+
+aside.collapsed .panel-header-stream {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+    gap: 24px;
+}
+
+aside.collapsed .stream-filters,
+aside.collapsed .stream-stats,
+aside.collapsed .terminal-stream,
+aside.collapsed .active-flows-list,
+aside.collapsed .stat-value {
+    display: none !important;
+}
+
+/* --------------------------------------
+   Bottom Stats Bar
+   -------------------------------------- */
+.bottom-stats-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    pointer-events: auto;
+    background: rgba(5, 5, 8, 0.15);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-color);
+    padding: 10px 16px; /* Shrink side padding to free up space */
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Compress the massive 24px gap down to 12px */
+    z-index: 20;
+}
+
+.bottom-stats-bar .bar-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bottom-stats-bar .bar-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.bottom-stats-bar .bar-label {
+    font-size: 0.6rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.bottom-stats-bar .bar-value {
+    font-size: 0.9rem; /* Slightly smaller text */
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: 'Courier New', Courier, monospace;
+    display: inline-block;
+    min-width: 45px; /* Shrunk from 65px to free up space */
+    text-align: left;
+}
+
+.bottom-stats-bar .bar-value.safe { color: var(--status-safe); }
+.bottom-stats-bar .bar-value.danger { color: var(--status-danger); }
+.bottom-stats-bar .bar-value.warn { color: var(--status-warn); }
+
+/* Adaptive progress bar in bottom bar */
+.bottom-progress-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.bottom-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(255, 179, 0, 0.3), var(--status-warn));
+    border-radius: 2px;
+    transition: width 0.6s ease;
+    width: 0%;
+    box-shadow: 0 0 8px rgba(255, 179, 0, 0.45);
+}

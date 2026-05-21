@@ -2,7 +2,6 @@
 Report Generator Module
 Generates downloadable security reports in HTML, PDF, and CSV formats
 """
-import json
 import csv
 import io
 from datetime import datetime
@@ -207,7 +206,7 @@ class ReportGenerator:
 
     def _create_html_template(self):
         """Read HTML report template from file."""
-        template_path = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'templates', 'report_template.html')
+        template_path = os.path.join(os.path.dirname(__file__), '..', 'frontend_v2', 'templates', 'report_template.html')
         try:
             with open(template_path, 'r', encoding='utf-8') as f:
                 return f.read()

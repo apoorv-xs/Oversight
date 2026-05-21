@@ -1,0 +1,38 @@
+:root {
+    /* UI/UX Showcase: Premium Dark Tokens */
+    --bg-page: #000000;
+    --bg-surface: rgba(5, 5, 5, 0.4); /* Translucent Glass */
+    --bg-surface-hover: rgba(10, 10, 10, 0.6);
+
+    --text-primary: #ffffff;
+    --text-secondary: #888888; /* Slate-Gray */
+    --text-tertiary: #444444; /* Terminal-Gray */
+
+    --border-color: rgba(255, 255, 255, 0.04);
+    --border-hover: rgba(255, 255, 255, 0.15);
+
+    --accent-blue: #ffffff; /* Silver-White Accent */
+    --status-safe: #00e676; /* Neo-Mint Green */
+    --status-warn: #f5a623; /* Tactical Amber Orange */
+    --status-danger: #ff2a2a; /* Neon Threat Red */
+    --ai-accent: #ff2a2a;
+
+    /* Glow Shadow Tokens */
+    --glow-white: 0 0 15px rgba(255, 255, 255, 0.25);
+    --glow-safe: 0 0 15px rgba(0, 230, 118, 0.25);
+    --glow-warn: 0 0 15px rgba(245, 166, 35, 0.25);
+    --glow-danger: 0 0 15px rgba(255, 42, 42, 0.3);
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+
+    --transition-fast: 0.15s ease;
+}

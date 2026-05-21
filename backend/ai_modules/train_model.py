@@ -74,10 +74,15 @@ def _train_and_save_model(normal_data, model_dir):
 
     # Export to ONNX
     try:
+        import sys
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(encoding='utf-8')
         dummy_input = torch.randn(1, len(LIVE_FEATURES))
         onnx_path = os.path.join(model_dir, 'autoencoder.onnx')
         torch.onnx.export(
-            model, dummy_input, onnx_path, export_params=True, opset_version=11,
+            model, dummy_input, onnx_path, export_params=True, opset_version=18,
             do_constant_folding=True, input_names=['input'], output_names=['output'],
             dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}
         )

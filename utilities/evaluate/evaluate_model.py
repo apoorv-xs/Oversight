@@ -6,7 +6,8 @@ import torch
 import pandas as pd
 import numpy as np
 
-project_root = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(project_root, 'backend'))
 sys.path.append(os.path.join(project_root, 'backend', 'ai_modules'))
 
 try:
@@ -106,6 +107,22 @@ def evaluate_accuracy():
     print(f"Correctly Ignored Normal (True Negatives):     {true_negatives:,}")
     print(f"False Alarms (False Positives):                {false_positives:,}")
     print(f"Missed Attacks (False Negatives):              {false_negatives:,}")
+    
+    if 'attack_cat' in test_df.columns:
+        print("-" * 60)
+        print("MISSED ATTACKS (FALSE NEGATIVES) BY CATEGORY")
+        print("-" * 60)
+        print(f"{'Attack Category':<18} | {'Total':<8} | {'Missed (FN)':<11} | {'Detection Rate':<14}")
+        print("-" * 60)
+        fn_mask = (predicted_anomalies == 0) & (actual_labels == 1)
+        total_by_cat = test_df[test_df['label'] == 1].groupby('attack_cat').size()
+        missed_by_cat = test_df[fn_mask].groupby('attack_cat').size()
+        for cat in sorted(total_by_cat.index):
+            tot = total_by_cat.get(cat, 0)
+            msd = missed_by_cat.get(cat, 0)
+            det_rate = ((tot - msd) / tot) * 100 if tot > 0 else 0.0
+            print(f"{cat:<18} | {tot:<8,} | {msd:<11,} | {det_rate:>13.2f}%")
+            
     print("-" * 60)
     print(f"OVERALL ACCURACY:          {accuracy:.2f}%")
     print(f"THREAT DETECTION RATE:     {detection_rate:.2f}%")

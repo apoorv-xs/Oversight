@@ -26,8 +26,8 @@ from routes.reports import reports_bp
 
 # Initialize Flask Application
 app = Flask(__name__,
-    template_folder=os.path.join(PROJECT_ROOT, 'frontend', 'templates'),
-    static_folder=os.path.join(PROJECT_ROOT, 'frontend', 'static')
+    template_folder=os.path.join(PROJECT_ROOT, 'frontend_v2', 'templates'),
+    static_folder=os.path.join(PROJECT_ROOT, 'frontend_v2', 'static')
 )
 app.config['SECRET_KEY'] = 'oversight-adaptive-threat-engine-secret'
 CORS(app)
@@ -44,6 +44,15 @@ app.register_blueprint(reports_bp)
 # Ensure packet capture state is reset on startup
 from globals import capture_running
 capture_running.clear()
+
+@app.after_request
+def add_header(response):
+    """Disable caching for API endpoints and responses."""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
 
 @socketio.on('connect')
 def handle_connect():
@@ -65,15 +74,5 @@ def run_ml_training_if_needed():
     baseline_manager.startup_retrain()
 
 if __name__ == '__main__':
-    print("=" * 60)
-    print("OVERSIGHT: Adaptive Threat Engine")
-    print("=" * 60)
-    print("Server initialized. Access the dashboard at: http://localhost:5000")
-    print("=" * 60)
-
-    # Execute ML initialization in a background thread to prevent blocking server startup
-    training_thread = Thread(target=run_ml_training_if_needed, daemon=True)
-    training_thread.start()
-
-    # Start the production-ready SocketIO server
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False, allow_unsafe_werkzeug=True)
+    print("ERROR: Please run the application using 'python run.py' from the project root.")
+    sys.exit(1)

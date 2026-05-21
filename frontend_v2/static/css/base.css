@@ -1,0 +1,87 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #000000;
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden; /* Prevent scrolling, full screen */
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Dynamic Drifting Background Nebulas */
+body::before {
+    content: '';
+    position: absolute;
+    top: -150px;
+    left: -150px;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.015) 0%, rgba(255, 255, 255, 0) 70%);
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(80px);
+    animation: drift 20s infinite alternate ease-in-out;
+}
+
+body::after {
+    content: '';
+    position: absolute;
+    bottom: -150px;
+    right: -150px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 42, 42, 0.01) 0%, rgba(255, 42, 42, 0) 70%);
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(100px);
+    animation: drift-reverse 25s infinite alternate ease-in-out;
+}
+
+@keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(100px, 80px) scale(1.2); }
+}
+
+@keyframes drift-reverse {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(-120px, -80px) scale(1.15); }
+}
+
+/* Custom Ultra-Thin Modern Scrollbars for HUD Panels */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.01);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+body.panic-mode {
+    background: radial-gradient(circle at center, #1c050a 0%, #040103 100%);
+    box-shadow: inset 0 0 200px rgba(255, 42, 42, 0.35);
+    animation: panic-pulse 2s infinite alternate;
+}
+
+@keyframes panic-pulse {
+    0% { box-shadow: inset 0 0 100px rgba(255, 42, 42, 0.2); }
+    100% { box-shadow: inset 0 0 250px rgba(255, 42, 42, 0.6); }
+}
+
