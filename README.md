@@ -32,26 +32,43 @@ Built to show how network telemetry can be intuitive, responsive, and visually e
 ## 📦 Running It Locally
 
 ### Prerequisites
-- **Windows**: Install [Npcap](https://npcap.com/) for raw packet capture.
-- Run your terminal/IDE as **Administrator** so Scapy can bind to the network interface.
+- **Python**: Python 3.10+ installed.
+- **Npcap Driver**: [Npcap](https://npcap.com/) is required on Windows for raw packet interception.
+- **Privileges**: Run your terminal (Command Prompt/PowerShell) as **Administrator** so Scapy can bind to the network interface.
 
 ### Setup
-1. **Clone and enter**:
+
+1. **Clone and enter the repository**:
    ```bash
    git clone https://github.com/apoorv-xs/Oversight.git
    cd Oversight
    ```
 
-2. **Install dependencies**:
+2. **Create and activate a virtual environment (recommended)**:
+   ```bash
+   python -m venv venv
+   # On Windows (Admin Command Prompt):
+   venv\Scripts\activate
+   # On Windows (Admin PowerShell):
+   .\venv\Scripts\activate
+   ```
+
+3. **Install the dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Launch**:
+4. **Download the GeoIP Database**:
+   *(Required to map external/remote threat vectors onto the 3D globe)*
+   ```bash
+   python utilities/scripts/download_geoip.py
+   ```
+
+5. **Launch OVERSIGHT**:
    ```bash
    python run.py
    ```
-   Open `http://localhost:5000` in your browser.
+   Open `http://localhost:5000` in your browser to view the dashboard.
 
 ## 📐 Internal Architecture
 
