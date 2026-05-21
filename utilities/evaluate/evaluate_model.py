@@ -18,11 +18,7 @@ except ImportError as e:
     sys.exit(1)
 
 def evaluate_accuracy():
-    """
-    Evaluates the localized Autoencoder model against the UNSW-NB15 testing dataset.
-    This serves as a benchmarking utility to verify the anomaly detection performance
-    against globally recognized attack patterns.
-    """
+    # evaluate autoencoder model on unsw-nb15 test set
     print("=" * 60)
     print("AI Model Accuracy Evaluator")
     print("=" * 60)
@@ -40,16 +36,16 @@ def evaluate_accuracy():
         return
 
     print("Loading saved model, scaler, and threshold...")
-    # Load Scaler
+    # load scaler
     with open(scaler_path, 'rb') as f:
         scaler = pickle.load(f)
 
-    # Load Threshold
+    # load threshold
     with open(threshold_path, 'r') as f:
         threshold_data = json.load(f)
         threshold = threshold_data['threshold']
 
-    # Load Model
+    # load model
     model = NetworkAutoencoder(input_dim=len(LIVE_FEATURES))
     model.load_state_dict(torch.load(model_path, weights_only=True))
     model.eval()
@@ -62,22 +58,21 @@ def evaluate_accuracy():
         input("Press Enter to exit...")
         return
 
-    # Extract features and labels
+    # get features and labels
     numeric_test = test_df[LIVE_FEATURES]
     actual_labels = test_df['label'].values  # 1 = Anomaly, 0 = Normal
 
-    # Scale and convert to tensor
+    # scale features and make tensor
     test_scaled = scaler.transform(numeric_test)
     test_tensor = torch.FloatTensor(test_scaled)
 
     print("Running predictions...")
     with torch.no_grad():
         reconstructed = model(test_tensor)
-        # Calculate Mean Squared Error
+        # calculate reconstruction error (mse)
         mse = torch.mean((test_tensor - reconstructed) ** 2, dim=1).numpy()
 
-    # Predictions: True if MSE > threshold (Anomaly), False if MSE <= threshold (Normal)
-    # Uses the dynamically calculated 99th percentile threshold
+    # classify based on threshold
     predicted_anomalies = (mse > threshold).astype(int)
 
     # Calculate metrics
