@@ -105,7 +105,7 @@ export function updateGlobeData() {
     lastGlobeUpdate = now;
 
     requestAnimationFrame(() => {
-        // Proactively prune expired arcs before rendering to ensure instant UI responsiveness upon clearing selection
+        // clear out old arcs from the globe so it doesn't lag
         const timeNow = Date.now();
         state.activeArcs = state.activeArcs.filter(a => {
             const isSelected = isArcSelected(a);

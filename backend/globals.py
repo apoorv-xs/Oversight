@@ -1,7 +1,4 @@
-"""
-OVERSIGHT: Adaptive Threat Engine
-Shared Application State and Configuration
-"""
+# Oversight - Shared Application State and Config
 
 import os
 import sys
@@ -11,25 +8,23 @@ from datetime import datetime
 from threading import Lock, Event
 from flask_socketio import SocketIO
 
-# --- Path Configuration ---
-# Set the project root and add relevant directories to sys.path for modular imports
+# Paths & Imports
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_modules'))
 
 from ai_modules.feature_extractor import FlowManager
 
-# --- Networking & Socket Configuration ---
-# Initialize SocketIO with cross-origin support for distributed environments
+# Socket.io config
 socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
 
-# --- Thread Safety & Synchronization ---
+# Locks
 traffic_stats_lock = Lock()
 latest_results_lock = Lock()
 manual_whitelist_lock = Lock()
 capture_running = Event()
 
-# --- Application State ---
+# Main state variables
 latest_results = {}
 manual_whitelist = set()  # Tracks (src_ip, dst_ip, dport) tuples for user-verified connections
 
@@ -38,7 +33,7 @@ capture_error = None  # Tracks any critical error from the capture thread
 flow_manager = FlowManager(timeout=5)
 traffic_stats_queue = queue.Queue(maxsize=1000)
 
-# Real-time traffic statistics and telemetry metrics
+# Traffic metrics & stats
 traffic_stats = {
     'total_packets': 0,
     'total_bytes': 0,
@@ -55,9 +50,7 @@ traffic_stats = {
 }
 
 def is_admin_user():
-    """
-    Checks if the current process runs with Administrator (Windows) or root (Unix) privileges.
-    """
+    # check if process has admin privileges
     import platform
     if platform.system() == 'Windows':
         import ctypes
@@ -72,9 +65,7 @@ def is_admin_user():
             return False
 
 def reset_traffic_stats():
-    """
-    Thread-safely resets the global traffic statistics dictionary, ensuring clean state on new sessions.
-    """
+    # reset traffic metrics
     with traffic_stats_lock:
         traffic_stats.clear()
         traffic_stats.update({
@@ -93,7 +84,7 @@ def reset_traffic_stats():
         })
 
 
-# --- AI Model Configuration ---
+# AI Model setup
 anomaly_model = None
 autoencoder_scaler = None
 autoencoder_threshold = 0.05  # Default threshold for anomaly detection
@@ -105,13 +96,7 @@ SCALER_PATH = os.path.join(MODEL_DIR, 'scaler.pkl')
 THRESHOLD_PATH = os.path.join(MODEL_DIR, 'threshold.json')
 
 def reload_model(initial_load=False):
-    """
-    Loads or reloads the AI model and its associated scaler and threshold parameters.
-    
-    Args:
-        initial_load (bool): If True, logs detailed startup information. 
-                             If False, performs a silent hot-swap of the model.
-    """
+    # loads/reloads the ONNX model, scaler, and threshold
     global anomaly_model, autoencoder_scaler, autoencoder_threshold
     try:
         import onnxruntime as ort
@@ -141,9 +126,9 @@ def reload_model(initial_load=False):
         if initial_load:
             print(f"[ERROR] Failed to load AI model: {e}")
 
-# Perform initial model load upon module import
+# initial model load
 reload_model(initial_load=True)
 
-# Initialize Adaptive Learning components
+# adaptive training setup
 from services.adaptive_trainer import BaselineManager
 baseline_manager = BaselineManager(PROJECT_ROOT)

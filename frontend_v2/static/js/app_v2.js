@@ -328,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Initial call on DOMContentLoaded
             updatePanelWidths();
 
-            // Fallback initial call on complete window load to ensure all stylesheets are processed
+            // run again when window loads to make sure styles are applied
             window.addEventListener('load', updatePanelWidths);
         }
     } catch (e) {

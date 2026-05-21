@@ -4,11 +4,7 @@ import threading
 import ipaddress
 
 class ThreatIntel:
-    """
-    Local Threat Intelligence Engine.
-    Maintains an in-memory cache of the FireHOL blocklist to identify known malicious IP addresses.
-    The cache is refreshed every 24 hours to ensure up-to-date protection.
-    """
+    # keeps an in-memory cache of the FireHOL blocklist to identify bad IPs
     
     def __init__(self):
         self.blocklist = set()
@@ -20,11 +16,11 @@ class ThreatIntel:
         # FireHOL Level 1: Curated list of high-confidence malicious IPs
         self.blocklist_url = "https://raw.githubusercontent.com/firehol/blocklist-ipsets/master/firehol_level1.netset"
         
-        # Initiate asynchronous blocklist synchronization loop
+        # run sync loop in the bg
         threading.Thread(target=self._blocklist_sync_loop, daemon=True).start()
 
     def _blocklist_sync_loop(self):
-        """Periodically synchronizes the blocklist, retrying on failure."""
+        # periodic sync loop
         while True:
             self.update_blocklist()
             
@@ -38,7 +34,7 @@ class ThreatIntel:
                 time.sleep(300) # Retry in 5 minutes
 
     def update_blocklist(self):
-        """Downloads and parses the external IP blocklist into the local cache."""
+        # downloads the latest blocklist and updates local cache
         current_time = time.time()
         if current_time - self.last_update < self.update_interval and self.blocklist:
             return

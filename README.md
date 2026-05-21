@@ -1,63 +1,42 @@
-# OVERSIGHT: Adaptive Threat Engine
+# OVERSIGHT
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Framework: Flask](https://img.shields.io/badge/Framework-Flask-lightgrey.svg)](https://flask.palletsprojects.com/)
-[![AI Stack: ONNX](https://img.shields.io/badge/AI_Stack-ONNX-purple.svg)](https://onnx.ai/)
+An interactive, real-time network threat monitoring console. It translates raw network capture into a high-fidelity visual dashboard, pairing a modular threat engine with a WebGL 3D globe to map network traffic and security alerts dynamically.
 
-**OVERSIGHT** is a real-time network security monitoring system that bridges the gap between traditional rule-based firewalls and modern behavioral analysis. It utilizes a **Symmetric Feed-Forward Autoencoder** to identify sophisticated network anomalies that bypass standard signature-based detection.
+Built to show how network telemetry can be intuitive, responsive, and visually engaging.
 
----
+![Dashboard Preview](screenshots/dashboard_v2.png)
 
-## 🖥️ Dashboard Interface
+## 🎨 Visual & Frontend Features
 
-Below is a preview of the high-fidelity bento-grid OVERSIGHT threat monitoring dashboard in action:
+- **Interactive WebGL 3D Globe**: Maps and plots incoming network vectors in real-time. When a threat is detected, the camera automatically pans and zooms to focus on the target coordinates.
+- **Glassmorphic Bento Grid UI**: A modern dashboard layout utilizing clean responsive panels, status indicators, and sleek dark-mode aesthetics.
+- **Custom Soundscapes**: Interactive audio cues and notifications for real-time security alerts, bringing a tactile feel to live network events.
+- **Dynamic Arc Pruning & Restoration**: Caches and clears old traffic arcs proactively to keep the WebGL canvas smooth and responsive, while allowing analysts to click any alert in the log to instantly redraw its vector.
+- **Smart Local Traffic Badging**: Automatically identifies private subnets (`127.x.x.x`, `10.x.x.x`, `192.168.x.x`, etc.) and marks them with dedicated `LOCAL` badges to minimize visual clutter.
 
-![Oversight AI Threat Dashboard](screenshots/dashboard_v2.png)
+## 🧠 Behind the Hood (Core Engine)
 
----
+- **AI Anomaly Detection**: Implements a deep learning symmetric autoencoder trained on the UNSW-NB15 dataset. It reads 14-dimensional flow feature vectors and uses the ONNX Runtime for sub-millisecond inference on local hardware.
+- **Dual-Stage Pipeline**: 
+  - **Stage 1 (Signature)**: Cross-references live IPs against a locally-cached FireHOL level-1 threat intelligence blocklist (refreshed daily).
+  - **Stage 2 (Behavioral)**: Passes non-blocklisted flows through the AI model to calculate reconstruction error (MSE); outliers are flagged as zero-day anomalies.
+- **Adaptive Retraining Loop**: Safe flows are buffered and periodically flushed to the local baseline dataset to retrain and update the model without interrupting the capture thread.
 
-## 🚀 Key Technical Highlights
+## 🛠️ Stack
 
-### 1. AI-Driven Behavioral Analysis
-- **Unsupervised Learning**: Implements a deep learning autoencoder trained exclusively on "normal" network traffic.
-- **Anomaly Detection**: Identifies threats by measuring the **Reconstruction Error (MSE)**; statistical outliers are flagged as potential zero-day exploits.
-- **ONNX Optimization**: Models are exported to ONNX format for hardware-accelerated, sub-millisecond inference on consumer hardware.
+- **Frontend**: HTML5, Vanilla CSS3 (Custom Variables, Bento Grid), JavaScript (ES6), Globe.gl (Three.js/WebGL under the hood)
+- **Backend**: Python 3.10+, Flask, Flask-SocketIO (WebSockets for low-latency streaming)
+- **AI/ML**: ONNX Runtime, Scikit-learn, Pandas, NumPy
+- **Packet Capture**: Scapy (requires Npcap driver on Windows)
 
-### 2. Multi-Stage Detection Pipeline
-- **Stage 1 (Signature)**: Cross-references live flows against the **FireHOL Threat Intelligence** blocklist.
-- **Stage 2 (Behavioral)**: Processes 14-dimensional feature vectors (derived from the UNSW-NB15 standard) through the AI engine.
-
-### 3. Adaptive Learning Loop
-- **Autonomous Evolution**: Verification of "Normal" flows triggers background retraining sessions.
-- **Hot-Swapping**: New models and scalers are integrated into the live system without service interruption using thread-safe synchronization.
-
-### 4. Interactive 3D Globe Threat Focus & Auto-Pan
-- **Auto-Pan & Zoom**: Clicking on any threat vector in the left panel, anomaly toasts, or the alert history overlay dynamically plots the arc on the 3D globe and animates the camera to zoom into the remote target coordinates.
-- **Dynamic Arc Restoration**: The system automatically recovers and renders expired/pruned arcs instantly when an analyst clicks on an event in the dashboard logs.
-
-### 5. Local Traffic Visual Differentiation
-- **Subnet Badging**: Live network vectors and whitelisted exception bypass rules are continuously analyzed against private subnets (`127.x.x.x`, `10.x.x.x`, `192.168.x.x`, etc.) and automatically labeled with context-colored `LOCAL` badges.
-
----
-
-## 🛠️ Tech Stack
-
-- **Backend**: Python 3.10+, Flask, Flask-SocketIO (WebSockets)
-- **Networking**: Scapy (NDIS driver-level packet interception)
-- **AI/ML**: ONNX Runtime, Scikit-learn, NumPy, Pandas
-- **Frontend**: Vanilla HTML5, CSS3 (Bento Grid Layout), JavaScript (ES6+), Globe.gl (Three.js/WebGL)
-
----
-
-## 📦 Getting Started
+## 📦 Running It Locally
 
 ### Prerequisites
-- **Windows**: [Npcap](https://npcap.com/) is required for raw packet capture.
-- **Privileges**: Must be run as **Administrator** to access network sockets.
+- **Windows**: Install [Npcap](https://npcap.com/) for raw packet capture.
+- Run your terminal/IDE as **Administrator** so Scapy can bind to the network interface.
 
-### Installation
-1. **Clone the repository**:
+### Setup
+1. **Clone and enter**:
    ```bash
    git clone https://github.com/apoorv-xs/Oversight.git
    cd Oversight
@@ -68,29 +47,15 @@ Below is a preview of the high-fidelity bento-grid OVERSIGHT threat monitoring d
    pip install -r requirements.txt
    ```
 
-3. **Launch the Engine**:
+3. **Launch**:
    ```bash
    python run.py
    ```
-   Access the dashboard at `http://localhost:5000`.
+   Open `http://localhost:5000` in your browser.
 
----
+## 📐 Internal Architecture
 
-## 🏗️ Architecture Overview
-
-OVERSIGHT is designed with a modular, thread-safe architecture:
-
-- **Capture Engine**: A dedicated background thread utilizing Scapy's sniffer to feed a shared thread-safe queue.
-- **Feature Extractor**: Aggregates raw packets into bidirectional 5-tuple flows using a 5-second inactivity timeout.
-- **Inference Engine**: Performs high-speed normalization and ONNX inference to calculate real-time risk scores.
-- **WebSocket Gateway**: Streams telemetry and anomaly alerts to the frontend with sub-50ms latency.
-
----
-
-## 🛡️ License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
----
-
-*Built as a Major Project for the Bachelor of Technology (B.Tech) program.*
+- **Sniffer Thread**: Spins up a background thread using Scapy to sniff raw packets and queue them.
+- **Flow Manager**: Groups raw packets into bidirectional 5-tuple flows using an inactivity timeout.
+- **Inference Gateway**: Runs real-time standardization and ONNX inference to check for MSE spikes.
+- **WebSocket Gateway**: Streams live traffic stats and anomaly alerts to the browser.

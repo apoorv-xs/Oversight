@@ -4,13 +4,7 @@ from ai_modules.feature_extractor import LIVE_FEATURES
 from services.dns_resolver import dns_cache
 
 def packet_callback(packet_info):
-    """
-    Main callback for live network traffic interception. 
-    Updates global statistics and triggers the flow manager for behavioral analysis.
-    
-    Args:
-        packet_info (dict): Extracted metadata from the captured packet.
-    """
+    # callback for raw packets, updates stats and feeds flow manager
     try:
         proto = packet_info.get('protocol', 'OTHER')
 
@@ -87,9 +81,7 @@ def packet_callback(packet_info):
         print(f"[ERROR] Packet processing error: {e}")
 
 def _emit_anomaly(row, alert_type, error, geo_info):
-    """
-    Constructs anomaly_data, appends to global stats lock-safely, and emits WebSocket.
-    """
+    # builds anomaly dict, updates stats thread-safely, and sends via socketio
     src_str = str(row.get('src', 'N/A'))
     dst_str = str(row.get('dst', 'N/A'))
     
@@ -120,9 +112,7 @@ def _emit_anomaly(row, alert_type, error, geo_info):
 
 
 def _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info):
-    """
-    Emits normal_flow WebSocket event for the frontend dashboard.
-    """
+    # sends normal flow info via socketio for the dashboard map/lists
     normal_data = {
         'src': src_str,
         'src_host': dns_cache.get_hostname(src_str),
@@ -136,11 +126,7 @@ def _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info):
 
 
 def check_expired_flows():
-    """
-    Performs a dual-stage security audit on completed network flows.
-    Stage 1: Threat Intelligence (Blocklist matching)
-    Stage 2: AI Behavioral Analysis (Autoencoder reconstruction error)
-    """
+    # audits expired flows: first threat intel feed, then ONNX autoencoder
     try:
         import numpy as np
         from globals import anomaly_model, autoencoder_scaler, autoencoder_threshold
@@ -151,7 +137,7 @@ def check_expired_flows():
         expired = flow_manager.get_expired_flows()
         if expired is not None and not expired.empty:
             
-            # --- Stage 1: Threat Intelligence Check ---
+            # Stage 1: threat intel check
             clean_indices = []
             
             for i, row in expired.iterrows():
@@ -177,7 +163,7 @@ def check_expired_flows():
                 
             clean_expired = expired.loc[clean_indices]
             
-            # --- Stage 2: Deep Learning Behavioral Analysis (ONNX) ---
+            # Stage 2: deep learning/autoencoder check
             if anomaly_model and autoencoder_scaler:
                 # Pre-process flow features for model inference
                 df_to_predict = clean_expired.reindex(columns=LIVE_FEATURES).fillna(0)

@@ -224,6 +224,6 @@ class FlowManager:
             self.flows.clear()
 
     def get_active_flow_count(self):
-        """Get the count of active flows thread-safely."""
+        # get number of active flows (with lock)
         with self.lock:
             return len(self.flows)

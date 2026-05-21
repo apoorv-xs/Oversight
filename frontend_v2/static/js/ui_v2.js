@@ -559,7 +559,7 @@ export function renderActiveFlowsList() {
         const listEl = document.getElementById('activeFlowsList');
         if (!listEl) return;
 
-        // Proactively prune expired flows before rendering to ensure instant UI responsiveness upon clearing selection
+        // clear out expired flows so we only show active ones
         const now = Date.now();
         state.recentFlows = state.recentFlows.filter(f => {
             const isSelected = isFlowSelected(f);

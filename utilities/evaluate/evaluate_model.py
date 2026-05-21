@@ -11,9 +11,7 @@ sys.path.append(os.path.join(project_root, 'backend'))
 sys.path.append(os.path.join(project_root, 'backend', 'ai_modules'))
 
 try:
-    # pyrefly: ignore [missing-import]
     from autoencoder import NetworkAutoencoder
-    # pyrefly: ignore [missing-import]
     from feature_extractor import LIVE_FEATURES
 except ImportError as e:
     print(f"Error importing modules: {e}")

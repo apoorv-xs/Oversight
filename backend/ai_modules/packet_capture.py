@@ -1,24 +1,13 @@
-"""
-Packet Capture Engine using Scapy.
-Runs in a background thread to intercept raw network traffic.
-"""
+# Oversight packet capture thread using scapy
 import scapy.all as scapy
 from threading import Thread, Event
 import time
 
 class PacketCaptureThread(Thread):
-    """
-    Background thread dedicated to capturing network packets using the Scapy sniffer.
-    """
+    # bg thread for scapy packet capture
 
     def __init__(self, interface, callback):
-        """
-        Initialize the capture thread.
-        
-        Args:
-            interface (str): The name of the network interface to sniff on.
-            callback (function): Function to call for each captured packet.
-        """
+        # init the capture thread with iface and callback
         super().__init__()
         self.interface = interface
         self.callback = callback
@@ -28,11 +17,11 @@ class PacketCaptureThread(Thread):
         self.sniffer = None
 
     def stop(self):
-        """Signals the sniffer thread to terminate."""
+        # signal the capture loop to stop
         self.stop_event.clear()
 
     def run(self):
-        """Executes the Scapy sniffing loop."""
+        # start sniffing
         print(f"[INFO] Starting packet capture on interface: {self.interface}")
 
         def process_packet(packet):
@@ -80,16 +69,7 @@ class PacketCaptureThread(Thread):
 
 
     def extract_packet_info(self, packet):
-        """
-        Extracts key network features from a raw Scapy packet.
-        
-        Args:
-            packet (scapy.Packet): The raw packet captured by Scapy.
-            
-        Returns:
-            dict: A dictionary containing extracted fields (src, dst, protocol, etc.)
-                  or None if the packet is not an IP packet.
-        """
+        # parse raw scapy packet into simple info dict
         if not packet.haslayer('IP'):
             return None
 
@@ -123,10 +103,7 @@ class PacketCaptureThread(Thread):
         return info
 
 def list_interfaces_safe():
-    """
-    Retrieves a list of active network interfaces.
-    Uses error handling to ensure system stability if driver access is restricted.
-    """
+    # list all network interfaces we can sniff on
     interfaces = []
     try:
         working_ifaces = scapy.get_working_ifaces()
@@ -148,7 +125,7 @@ def list_interfaces_safe():
 
 
 def get_default_interface():
-    """Get the default network interface."""
+    # find default interface
     try:
         # Try to get the interface used for default route
         default_ip = scapy.conf.route.route("0.0.0.0")[2]
