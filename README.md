@@ -4,7 +4,10 @@ An interactive, real-time network threat monitoring console. It translates raw n
 
 Built to show how network telemetry can be intuitive, responsive, and visually engaging.
 
-![Dashboard Preview](screenshots/dashboard_v2.png)
+<p align="center">
+  <img src="screenshots/dashboard_v1.png" alt="OVERSIGHT Dashboard View 1" width="49%" />
+  <img src="screenshots/dashboard_v2.png" alt="OVERSIGHT Dashboard View 2" width="49%" />
+</p>
 
 ## 🎨 Visual & Frontend Features
 
