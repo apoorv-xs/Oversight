@@ -632,6 +632,7 @@ export function addGlobeArc(data, isAnomaly) {
 
     let currentArc;
     let currentIsOutbound;
+    let shouldUpdateGlobe = false;
 
     if (existingArc) {
         existingArc.lastSeen = now;
@@ -640,6 +641,7 @@ export function addGlobeArc(data, isAnomaly) {
         if (isAnomaly && !existingArc.isAnomaly) {
             existingArc.isAnomaly = true;
             existingArc.baseColor = ['rgba(255, 42, 42, 0.3)', 'rgba(255, 42, 42, 1)'];
+            shouldUpdateGlobe = true;
         }
         
         // If the new data has geo info and the existing arc was unknown/simulated, update its geo info
@@ -657,11 +659,13 @@ export function addGlobeArc(data, isAnomaly) {
             existingArc.isLocal = false;
             
             currentIsOutbound = isOutbound;
+            shouldUpdateGlobe = true;
         } else {
             currentIsOutbound = existingArc.startLat === state.userLat; // Infer outbound if start is user
         }
         currentArc = existingArc;
     } else {
+        shouldUpdateGlobe = true;
         let remoteLat, remoteLng, isLocal;
 
         const isLocalConn = checkIsLocalConnection(data.src, data.dst);
@@ -724,7 +728,9 @@ export function addGlobeArc(data, isAnomaly) {
         if (state.activeArcs.length > 100) state.activeArcs.pop();
     }
 
-    updateGlobeData();
+    if (shouldUpdateGlobe) {
+        updateGlobeData();
+    }
 
     if (isAnomaly && !state.selectedFlowId) {
         const rings = state.globeWorld.ringsData();
