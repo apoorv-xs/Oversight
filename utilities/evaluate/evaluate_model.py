@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import pickle
-import torch
 import pandas as pd
 import numpy as np
 
@@ -11,7 +10,12 @@ sys.path.append(os.path.join(project_root, 'backend'))
 sys.path.append(os.path.join(project_root, 'backend', 'ai_modules'))
 
 try:
-    from autoencoder import NetworkAutoencoder
+    import onnxruntime as ort
+except ImportError:
+    print("Error: onnxruntime is required for evaluation. Please run 'pip install onnxruntime'.")
+    sys.exit(1)
+
+try:
     from feature_extractor import LIVE_FEATURES
 except ImportError as e:
     print(f"Error importing modules: {e}")
@@ -20,13 +24,13 @@ except ImportError as e:
 def evaluate_accuracy():
     # evaluate autoencoder model on unsw-nb15 test set
     print("=" * 60)
-    print("AI Model Accuracy Evaluator")
+    print("AI Model Accuracy Evaluator (ONNX Production Model)")
     print("=" * 60)
 
     model_dir = os.path.join(project_root, 'model')
     test_csv = os.path.join(project_root, 'dataset', 'UNSW_NB15_testing-set.csv')
     
-    model_path = os.path.join(model_dir, 'autoencoder.pth')
+    model_path = os.path.join(model_dir, 'autoencoder.onnx')
     scaler_path = os.path.join(model_dir, 'scaler.pkl')
     threshold_path = os.path.join(model_dir, 'threshold.json')
 
@@ -35,7 +39,7 @@ def evaluate_accuracy():
         input("Press Enter to exit...")
         return
 
-    print("Loading saved model, scaler, and threshold...")
+    print("Loading saved ONNX model, scaler, and threshold...")
     # load scaler
     with open(scaler_path, 'rb') as f:
         scaler = pickle.load(f)
@@ -45,10 +49,15 @@ def evaluate_accuracy():
         threshold_data = json.load(f)
         threshold = threshold_data['threshold']
 
-    # load model
-    model = NetworkAutoencoder(input_dim=len(LIVE_FEATURES))
-    model.load_state_dict(torch.load(model_path, weights_only=True))
-    model.eval()
+    # load ONNX session
+    try:
+        session = ort.InferenceSession(model_path)
+        input_name = session.get_inputs()[0].name
+        output_name = session.get_outputs()[0].name
+    except Exception as e:
+        print(f"Error loading ONNX model: {e}")
+        input("Press Enter to exit...")
+        return
 
     print(f"Loading test dataset from {os.path.basename(test_csv)}... (this may take a few seconds)")
     test_df = pd.read_csv(test_csv)
@@ -62,15 +71,19 @@ def evaluate_accuracy():
     numeric_test = test_df[LIVE_FEATURES]
     actual_labels = test_df['label'].values  # 1 = Anomaly, 0 = Normal
 
-    # scale features and make tensor
+    # scale features
     test_scaled = scaler.transform(numeric_test)
-    test_tensor = torch.FloatTensor(test_scaled)
 
     print("Running predictions...")
-    with torch.no_grad():
-        reconstructed = model(test_tensor)
+    try:
+        onnx_inputs = {input_name: test_scaled.astype(np.float32)}
+        reconstructed = session.run([output_name], onnx_inputs)[0]
         # calculate reconstruction error (mse)
-        mse = torch.mean((test_tensor - reconstructed) ** 2, dim=1).numpy()
+        mse = np.mean((test_scaled - reconstructed) ** 2, axis=1)
+    except Exception as e:
+        print(f"Error during ONNX inference: {e}")
+        input("Press Enter to exit...")
+        return
 
     # classify based on threshold
     predicted_anomalies = (mse > threshold).astype(int)
