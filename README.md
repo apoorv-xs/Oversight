@@ -25,7 +25,49 @@ Built to show how network telemetry can be intuitive, responsive, and visually e
   - **Stage 2 (Behavioral)**: Passes non-blocklisted flows through the AI model to calculate reconstruction error (MSE); outliers are flagged as zero-day anomalies.
 - **Adaptive Retraining Loop**: Safe flows are buffered and periodically flushed to the local baseline dataset to retrain and update the model without interrupting the capture thread.
 
+## 📊 AI Model Benchmark
+
+Evaluated on the [**UNSW-NB15**](https://research.unsw.edu.au/projects/unsw-nb15-dataset) test set — a widely-used network intrusion detection benchmark created by the **University of New South Wales (Cyber Range Lab)** containing a realistic mix of modern normal traffic and 9 categories of synthetically-generated attack vectors.
+
+- **Test Set**: 82,332 labeled network flows (45,332 attacks + 37,000 normal)
+- **Training**: Autoencoder trained exclusively on normal traffic (unsupervised — no attack labels used during training)
+
+| Metric | Score |
+|:---|:---|
+| **Threat Detection Rate (Recall)** | **99.76%** |
+| **Overall Accuracy** | 61.66% |
+| **True Positives** | 45,224 / 45,332 |
+| **Missed Attacks (False Negatives)** | 108 |
+
+> The model is intentionally tuned for **maximum recall** — in security, missing an attack is far more costly than a false alarm. The 99.76% detection rate means only 108 threats slipped through out of 45,332 real attacks.
+
+### Per-Category Detection Rates
+
+| Attack Category | Total Samples | Missed | Detection Rate |
+|:---|---:|---:|---:|
+| Analysis | 677 | 0 | **100.00%** |
+| Fuzzers | 6,062 | 0 | **100.00%** |
+| Reconnaissance | 3,496 | 0 | **100.00%** |
+| Shellcode | 378 | 0 | **100.00%** |
+| Worms | 44 | 0 | **100.00%** |
+| Generic | 18,871 | 10 | 99.95% |
+| Exploits | 11,132 | 42 | 99.62% |
+| Backdoor | 583 | 6 | 98.97% |
+| DoS | 4,089 | 50 | 98.78% |
+
+### Model Architecture
+
+```
+NetworkAutoencoder (14 → 8 → 4 → 8 → 14)
+├── Encoder: Linear(14,8) → ReLU → Linear(8,4) → ReLU
+├── Bottleneck: 4-dimensional latent space
+├── Decoder: Linear(4,8) → ReLU → Linear(8,14) → Sigmoid
+├── Loss: MSE (Reconstruction Error)
+└── Runtime: ONNX Runtime (sub-millisecond per flow)
+```
+
 ## 🛠️ Stack
+
 
 - **Frontend**: HTML5, Vanilla CSS3 (Custom Variables, Bento Grid), JavaScript (ES6), Globe.gl (Three.js/WebGL under the hood)
 - **Backend**: Python 3.10+, Flask, Flask-SocketIO (WebSockets for low-latency streaming)
