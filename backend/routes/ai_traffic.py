@@ -44,43 +44,52 @@ def start_capture():
         data = request.get_json() or {}
         interface_name = data.get('interface', None)
 
-        if capture_running.is_set():
-            return jsonify({'status': 'error', 'message': 'Capture already running'}), 400
+        with globals.capture_lock:
+            if capture_running.is_set():
+                return jsonify({'status': 'error', 'message': 'Capture already running'}), 400
 
-        # Enumerate interfaces to find a match or suitable fallback
-        interfaces = list_interfaces_safe()
-        if not interfaces:
-            return jsonify({'status': 'error', 'message': 'No network interfaces found'}), 400
+            # Also check if old thread is still alive (safety net)
+            old_thread = getattr(globals, 'capture_thread', None)
+            if old_thread and old_thread.is_alive():
+                return jsonify({'status': 'error', 'message': 'Capture thread is still active'}), 400
 
-        selected_interface = None
-        if interface_name:
-            selected_interface = next((i for i in interfaces if i['name'] == interface_name), None)
-        
-        # Fallback logic: prefer Wi-Fi, otherwise first working interface
-        if not selected_interface:
-            for iface in interfaces:
-                if 'Wi-Fi' in iface['name'] or 'Wi-Fi' in iface.get('description', ''):
-                    selected_interface = iface
-                    break
+            # Enumerate interfaces to find a match or suitable fallback
+            interfaces = list_interfaces_safe()
+            if not interfaces:
+                return jsonify({'status': 'error', 'message': 'No network interfaces found'}), 400
+
+            selected_interface = None
+            if interface_name:
+                selected_interface = next((i for i in interfaces if i['name'] == interface_name), None)
+
+            # Fallback logic: prefer Wi-Fi, otherwise first working interface
             if not selected_interface:
-                selected_interface = interfaces[0]
+                for iface in interfaces:
+                    if 'Wi-Fi' in iface['name'] or 'Wi-Fi' in iface.get('description', ''):
+                        selected_interface = iface
+                        break
+                if not selected_interface:
+                    selected_interface = interfaces[0]
 
-        # Reset traffic statistics and flow manager tracking before starting new session
-        print(f"[{datetime.now()}] /api/start-capture called. Resetting traffic_stats.")
+            # Reset traffic statistics and flow manager tracking before starting new session
+            print(f"[{datetime.now()}] /api/start-capture called. Resetting traffic_stats.")
 
-        reset_traffic_stats()
-        flow_manager.clear_flows()
+            reset_traffic_stats()
+            flow_manager.clear_flows()
 
-        print(f"[{datetime.now()}] traffic_stats reset completed. total_packets={traffic_stats.get('total_packets')}")
+            print(f"[{datetime.now()}] traffic_stats reset completed. total_packets={traffic_stats.get('total_packets')}")
 
-        globals.capture_error = None
-        capture_running.set()
-        globals.capture_thread = PacketCaptureThread(
-            selected_interface['name'],
-            packet_callback
-        )
-        globals.capture_thread.daemon = True
-        globals.capture_thread.start()
+            bpf_filter = data.get('bpf_filter', 'ip')
+
+            globals.capture_error = None
+            capture_running.set()
+            globals.capture_thread = PacketCaptureThread(
+                selected_interface['name'],
+                packet_callback,
+                bpf_filter=bpf_filter
+            )
+            globals.capture_thread.daemon = True
+            globals.capture_thread.start()
 
         return jsonify({
             'status': 'success',
@@ -100,21 +109,24 @@ def stop_capture():
         if not capture_running.is_set():
             return jsonify({'status': 'error', 'message': 'No capture running'}), 400
 
-        if globals.capture_thread:
-            globals.capture_thread.stop()
-        capture_running.clear()
-        time.sleep(0.5)  # Allow thread cleanup time
+        with globals.capture_lock:
+            if globals.capture_thread:
+                globals.capture_thread.stop()
+            capture_running.clear()
+            time.sleep(0.5)  # Allow thread cleanup time
 
-        # Flush any remaining buffered normal flows to the training baseline CSV
-        from globals import baseline_manager
-        baseline_manager.flush()
-        print(f"[{datetime.now()}] Baseline buffer flushed to disk on engine stop.")
+            # Flush any remaining buffered normal flows to the training baseline CSV
+            from globals import baseline_manager
+            baseline_manager.flush()
+            print(f"[{datetime.now()}] Baseline buffer flushed to disk on engine stop.")
 
-        # Reset traffic stats so next engine start begins from 0
-        reset_traffic_stats()
+            # Reset traffic stats so next engine start begins from 0
+            reset_traffic_stats()
 
-        # Reset the flow manager so stale flows don't carry over
-        flow_manager.clear_flows()
+            # Reset the flow manager so stale flows don't carry over
+            flow_manager.clear_flows()
+
+            globals.capture_thread = None
 
         print(f"[{datetime.now()}] Traffic stats and flow manager reset.")
 

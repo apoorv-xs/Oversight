@@ -10,6 +10,7 @@ from flask_socketio import SocketIO
 
 # Paths & Imports
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+VITE_DIST = os.path.join(PROJECT_ROOT, 'frontend_v2', 'dist')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_modules'))
 
@@ -22,6 +23,7 @@ socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
 traffic_stats_lock = Lock()
 latest_results_lock = Lock()
 manual_whitelist_lock = Lock()
+capture_lock = Lock()  # Guards capture thread lifecycle
 capture_running = Event()
 
 # Main state variables
@@ -88,6 +90,7 @@ def reset_traffic_stats():
 anomaly_model = None
 autoencoder_scaler = None
 autoencoder_threshold = 0.05  # Default threshold for anomaly detection
+model_lock = Lock()  # Serializes model reload vs inference
 
 # Persistent Storage Paths
 MODEL_DIR = os.path.join(PROJECT_ROOT, 'model')
@@ -98,33 +101,39 @@ THRESHOLD_PATH = os.path.join(MODEL_DIR, 'threshold.json')
 def reload_model(initial_load=False):
     # loads/reloads the ONNX model, scaler, and threshold
     global anomaly_model, autoencoder_scaler, autoencoder_threshold
-    try:
-        import onnxruntime as ort
-        import json
-        
-        if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH) and os.path.exists(THRESHOLD_PATH):
-            # Initialize the ONNX inference session
-            anomaly_model = ort.InferenceSession(MODEL_PATH)
-            
-            # Load the pre-processing scaler
-            with open(SCALER_PATH, 'rb') as f:
-                autoencoder_scaler = pickle.load(f)
-                
-            # Load the calibrated anomaly threshold
-            with open(THRESHOLD_PATH, 'r') as f:
-                autoencoder_threshold = json.load(f).get('threshold', 0.05)
-            
+    with model_lock:
+        try:
+            import onnxruntime as ort
+            import json
+
+            if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH) and os.path.exists(THRESHOLD_PATH):
+                # Initialize the ONNX inference session
+                new_session = ort.InferenceSession(MODEL_PATH)
+
+                # Load the pre-processing scaler
+                with open(SCALER_PATH, 'rb') as f:
+                    new_scaler = pickle.load(f)
+
+                # Load the calibrated anomaly threshold
+                with open(THRESHOLD_PATH, 'r') as f:
+                    new_threshold = json.load(f).get('threshold', 0.05)
+
+                # Atomically swap — inference code reads these under the same lock
+                anomaly_model = new_session
+                autoencoder_scaler = new_scaler
+                autoencoder_threshold = new_threshold
+
+                if initial_load:
+                    print(f"[INFO] AI model loaded successfully from {MODEL_DIR}")
+            elif initial_load:
+                print("[WARNING] No pre-trained model found. System will require initial training.")
+
+        except ImportError:
             if initial_load:
-                print(f"[INFO] AI model loaded successfully from {MODEL_DIR}")
-        elif initial_load:
-            print("[WARNING] No pre-trained model found. System will require initial training.")
-            
-    except ImportError:
-        if initial_load:
-            print("[ERROR] ONNX Runtime not found. Please install dependencies.")
-    except Exception as e:
-        if initial_load:
-            print(f"[ERROR] Failed to load AI model: {e}")
+                print("[ERROR] ONNX Runtime not found. Please install dependencies.")
+        except Exception as e:
+            if initial_load:
+                print(f"[ERROR] Failed to load AI model: {e}")
 
 # initial model load
 reload_model(initial_load=True)

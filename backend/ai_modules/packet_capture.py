@@ -6,11 +6,12 @@ import time
 class PacketCaptureThread(Thread):
     # bg thread for scapy packet capture
 
-    def __init__(self, interface, callback):
+    def __init__(self, interface, callback, bpf_filter='ip'):
         # init the capture thread with iface and callback
         super().__init__()
         self.interface = interface
         self.callback = callback
+        self.bpf_filter = bpf_filter  # BPF filter string; 'ip' excludes ARP/LLC noise
         self.packet_count = 0
         self.stop_event = Event()
         self.stop_event.set()
@@ -41,6 +42,7 @@ class PacketCaptureThread(Thread):
         try:
             scapy.sniff(
                 iface=self.interface,
+                filter=self.bpf_filter,
                 prn=process_packet,
                 stop_filter=lambda x: not self.stop_event.is_set(),
                 store=False

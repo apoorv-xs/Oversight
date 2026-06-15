@@ -1,13 +1,24 @@
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, send_from_directory
 from datetime import datetime
-from globals import anomaly_model
+from globals import anomaly_model, VITE_DIST
+import os
 
 core_bp = Blueprint('core_bp', __name__)
 
 @core_bp.route('/')
 def index():
-    # just serves the main page
+    # Serve Vite production build if available, otherwise fall back to dev template
+    vite_index = os.path.join(VITE_DIST, 'index.html')
+    if os.path.exists(vite_index):
+        return send_from_directory(VITE_DIST, 'index.html')
     return render_template('index.html')
+
+@core_bp.route('/assets/<path:filename>')
+def vite_assets(filename):
+    vite_assets_dir = os.path.join(VITE_DIST, 'assets')
+    if os.path.exists(os.path.join(vite_assets_dir, filename)):
+        return send_from_directory(vite_assets_dir, filename)
+    return '', 404
 
 @core_bp.route('/api/system-info')
 def get_system_info():

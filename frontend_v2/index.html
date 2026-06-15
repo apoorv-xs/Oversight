@@ -5,32 +5,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OVERSIGHT | Adaptive Threat Engine</title>
-    <!-- Modular CSS Architecture -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
-    <!-- Load Inter Font -->
+    <!-- Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
-    <!-- Socket.IO -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-
-    <!-- Globe.gl for 3D Threat Mapping -->
-    <script src="//unpkg.com/globe.gl"></script>
+    <!-- Vite entry -- resolves to src/main.ts -->
+    <script type="module" src="/src/main.ts"></script>
 </head>
 
 <body>
     <!-- Full Screen 3D Globe Background -->
     <div id="globeViz"></div>
 
-    <!-- HUD Cyber Overlay: Faint Scanlines + Vignette -->
+    <!-- HUD Cyber Overlay -->
     <div class="cyber-hud-overlay"></div>
-
-
 
     <!-- UI Overlay Layer -->
     <div class="ui-layer">
@@ -44,13 +33,13 @@
                 <span class="brand-sub">Adaptive Threat Engine</span>
             </div>
             <div class="nav-actions">
-                <button class="btn-outline" onclick="exportSecurityDossier()" style="height: 28px; margin-right: 8px;"
+                <button class="btn-outline" onclick="window.exportSecurityDossier()" style="height: 28px; margin-right: 8px;"
                     title="Export Security Dossier">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                         style="width: 12px; height: 12px;">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                         <polyline points="17 8 12 3 7 8" />
-                        <line x1="12" y1="3" x2="12" y2="15" />
+                        <line x1="12" y1="2" x2="12" y2="15" />
                     </svg>
                     Export Dossier
                 </button>
@@ -114,33 +103,25 @@
                 </div>
 
                 <div class="active-flows-list" id="anomalyStreamList" style="flex-grow: 1; margin-bottom: 10px;">
-                    <!-- Raw Matrix Waterfall for anomalies goes here -->
+                    <!-- Matrix waterfall injected here -->
                 </div>
 
                 <div style="display: flex; flex-direction: column; justify-content: flex-end; margin-top: auto;">
-                    <!-- Heartbeat ECG Timeline -->
                     <div class="heartbeat-container">
                         <canvas id="heartbeatCanvas"></canvas>
                     </div>
 
-                    <!-- Flow Timeout Settings & Stream Filters -->
                     <div class="stream-settings"
                         style="margin-top: 10px; margin-bottom: 6px; padding: 6px 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                         <span class="stat-label"
-                            style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Flow
-                            Timeout</span>
-                        <div
-                            style="display: flex; align-items: center; gap: 8px; flex-grow: 1; justify-content: flex-end;">
-                            <input type="range" id="inputFlowTimeout" min="2" max="30" value="5" style="width: 80px;"
-                                title="Adjust Flow Timeout">
+                            style="font-size: 0.65rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px;">Flow Timeout</span>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; justify-content: flex-end;">
+                            <input type="range" id="inputFlowTimeout" min="2" max="30" value="5" style="width: 80px;">
                             <span id="labelFlowTimeout"
                                 style="font-family: var(--font-mono); font-size: 0.65rem; color: #ffffff; min-width: 24px; text-align: right;">5s</span>
                         </div>
                     </div>
 
-
-
-                    <!-- Redesigned stream list -->
                     <div class="active-flows-list" id="aiStreamList"
                         style="flex: none; height: 180px; overflow-y: auto; margin-top: 6px;">
                         <div class="radar-empty-state">
@@ -164,8 +145,7 @@
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span class="stat-value tech-value" id="activeFlowsCount" style="font-size: 1.2rem;">0</span>
                         <button class="btn-ghost" onclick="togglePanel(this)"
-                            style="padding: 4px; border-radius: 4px; transition: transform 0.3s;"
-                            title="Minimize Panel">
+                            style="padding: 4px; border-radius: 4px; transition: transform 0.3s;" title="Minimize Panel">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" style="transition: transform 0.3s;">
                                 <path d="M19 15l-7-7-7 7" />
@@ -203,19 +183,16 @@
                         </div>
                         <div class="cyber-radar-legend" style="opacity: 0.5;">
                             <div style="color:var(--status-safe);"><span
-                                    style="display:inline-block; width:6px; height:6px; background:var(--status-safe); border-radius:50%; margin-right:4px;"></span>Safe
-                            </div>
+                                    style="display:inline-block;width:6px;height:6px;background:var(--status-safe);border-radius:50%;margin-right:4px;"></span>Safe</div>
                             <div style="color:var(--status-danger);"><span
-                                    style="display:inline-block; width:6px; height:6px; background:var(--status-danger); border-radius:50%; margin-right:4px;"></span>Threat
-                            </div>
+                                    style="display:inline-block;width:6px;height:6px;background:var(--status-danger);border-radius:50%;margin-right:4px;"></span>Threat</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="confidence-curve-container"
                     style="flex: none; height: 245px; display: flex; flex-direction: column; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
-                    <h4
-                        style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; text-align: center;">
+                    <h4 style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; text-align: center;">
                         AI Confidence Distribution</h4>
                     <div style="flex-grow: 1; position: relative; width: 100%;">
                         <canvas id="confidenceCanvas"
@@ -225,7 +202,7 @@
             </div>
         </aside>
 
-        <!-- Bottom Stats Bar (Adaptive AI Engine + Telemetry) -->
+        <!-- Bottom Stats Bar -->
         <footer class="bottom-stats-bar">
             <div class="bar-section">
                 <span class="bar-label">Packets</span>
@@ -274,7 +251,7 @@
 
     </div>
 
-    <!-- Toast Container (center-screen anomaly popups) -->
+    <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Notification History Overlay -->
@@ -313,14 +290,11 @@
             </header>
             <div class="scanner-tabs"
                 style="display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.1); flex-shrink: 0;">
-                <button class="tab-btn active" id="tabScannerAudit" onclick="switchScannerTab('AUDIT')">DIAGNOSTICS
-                    AUDIT</button>
-                <button class="tab-btn" id="tabScannerWhitelist" onclick="switchScannerTab('WHITELIST')">WHITELIST
-                    MANAGER</button>
+                <button class="tab-btn active" id="tabScannerAudit" onclick="switchScannerTab('AUDIT')">DIAGNOSTICS AUDIT</button>
+                <button class="tab-btn" id="tabScannerWhitelist" onclick="switchScannerTab('WHITELIST')">WHITELIST MANAGER</button>
             </div>
             <section class="scanner-body" id="scannerBody"
                 style="flex-grow: 1; overflow: hidden; display: flex; position: relative;">
-                <!-- Audit View -->
                 <div id="scannerAuditView"
                     style="width: 100%; height: 100%; display: block; overflow: hidden; position: relative;">
                     <div class="radar-empty-state" style="margin: 80px auto 0 auto;">
@@ -329,15 +303,11 @@
                         <span class="radar-empty-subtitle">INITIATE AUDIT TO EVALUATE SYSTEM POSTURE</span>
                     </div>
                 </div>
-                <!-- Whitelist Manager View -->
                 <div id="scannerWhitelistView"
                     style="width: 100%; height: 100%; display: none; flex-direction: column; overflow-y: auto; padding: 20px;">
-                    <h3
-                        style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--status-warn); margin-bottom: 15px; letter-spacing: 1px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">
+                    <h3 style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--status-warn); margin-bottom: 15px; letter-spacing: 1px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 5px;">
                         MANUAL WHITELIST RULES</h3>
-                    <div id="whitelistEntriesList" style="flex-grow: 1; display: flex; flex-direction: column;">
-                        <!-- Tabular whitelist rules injected here -->
-                    </div>
+                    <div id="whitelistEntriesList" style="flex-grow: 1; display: flex; flex-direction: column;"></div>
                 </div>
             </section>
         </div>
@@ -347,57 +317,25 @@
     <div id="keyboardShortcutsOverlay" class="notif-overlay">
         <div class="glass-panel"
             style="width: 500px; max-width: 90vw; padding: 25px; display: flex; flex-direction: column; align-items: center; text-align: center; border: 1px solid rgba(255, 179, 0, 0.2); box-shadow: 0 0 25px rgba(255, 179, 0, 0.15);">
-            <h2
-                style="font-family: 'Courier New', monospace; font-size: 1.1rem; color: var(--status-warn); margin-bottom: 20px; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,179,0,0.3);">
+            <h2 style="font-family: 'Courier New', monospace; font-size: 1.1rem; color: var(--status-warn); margin-bottom: 20px; letter-spacing: 2px; text-shadow: 0 0 8px rgba(255,179,0,0.3);">
                 HUD KEYBOARD SHORTCUTS</h2>
-            <div
-                style="width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 12px 20px; text-align: left; font-family: 'Courier New', monospace; font-size: 0.75rem; margin-bottom: 25px;">
-                <div
-                    style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center;">
-                    SPACE</div>
-                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Toggle Packet
-                    Interception (Start/Stop)</div>
-
-                <div
-                    style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">
-                    A</div>
-                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Filter live stream to
-                    breached ANOMALIES only</div>
-
-                <div
-                    style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">
-                    S</div>
-                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Filter live stream to
-                    SECURED anomalies only</div>
-
-                <div
-                    style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">
-                    C</div>
-                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Clear live stream filter
-                    & focus selection</div>
-
-                <div
-                    style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">
-                    D</div>
-                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Toggle Diagnostics &
-                    Whitelist Audit Panel</div>
-
-                <div
-                    style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">
-                    H / ?</div>
-                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Display this Keyboard
-                    Help dashboard</div>
+            <div style="width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 12px 20px; text-align: left; font-family: 'Courier New', monospace; font-size: 0.75rem; margin-bottom: 25px;">
+                <div style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center;">SPACE</div>
+                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Toggle Packet Interception (Start/Stop)</div>
+                <div style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">A</div>
+                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Filter live stream to breached ANOMALIES only</div>
+                <div style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">S</div>
+                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Filter live stream to SECURED anomalies only</div>
+                <div style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">C</div>
+                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Clear live stream filter & focus selection</div>
+                <div style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">D</div>
+                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Toggle Diagnostics & Whitelist Audit Panel</div>
+                <div style="color: var(--status-safe); font-weight: bold; border: 1px solid rgba(0, 230, 118, 0.3); padding: 2px 8px; border-radius: 3px; background: rgba(0,230,118,0.05); text-align: center; width: 45px;">H / ?</div>
+                <div style="color: rgba(255,255,255,0.9); display: flex; align-items: center;">Display this Keyboard Help dashboard</div>
             </div>
-            <button class="btn-outline" onclick="toggleKeyboardShortcutsModal()"
-                style="padding: 8px 24px; margin-top: var(--space-2);">Dismiss HUD Help</button>
+            <button class="btn-outline" onclick="toggleKeyboardShortcutsModal()" style="padding: 8px 24px; margin-top: var(--space-2);">Dismiss HUD Help</button>
         </div>
     </div>
-
-    <!-- Entry point for modular JS -->
-    <script type="module" src="{{ url_for('static', filename='js/app_v2.js') }}"></script>
-    <script>
-        // Note: togglePanel is now attached to window in app.js
-    </script>
 </body>
 
 </html>

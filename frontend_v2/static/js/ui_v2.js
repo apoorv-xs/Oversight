@@ -31,7 +31,7 @@ window.selectWhitelistItem = function (ip) {
 export function isFlowSelected(f) {
     if (!state.selectedFlowId) return false;
     if (state.selectedFlowId === f.id) return true;
-    
+
     const target = getSelectedFlowEndpoints();
     if (target) {
         return f.src === target.src && f.dst === target.dst && f.dport === target.dport;
@@ -51,7 +51,7 @@ export function isStreamEventSelected(event) {
 }
 
 export function trackFlow(data, isAnomaly) {
-    const existingIndex = state.recentFlows.findIndex(f => 
+    const existingIndex = state.recentFlows.findIndex(f =>
         f.src === data.src && f.dst === data.dst && f.dport === data.dport
     );
 
@@ -165,80 +165,80 @@ export function renderStreamList() {
             state.streamEvents = [];
         }
 
-    const isUserLaptop = (eventOrFlow) => {
-        const srcHost = (eventOrFlow.src_host || '').toLowerCase();
-        const dstHost = (eventOrFlow.dst_host || '').toLowerCase();
-        const src = (eventOrFlow.src || '').toLowerCase();
-        const dst = (eventOrFlow.dst || '').toLowerCase();
-        
-        const isUkLaptop = (val) => {
-            return val.includes('laptop-uk') || 
-                   val.includes('laptop_uk') || 
-                   val.includes('laptop uk');
+        const isUserLaptop = (eventOrFlow) => {
+            const srcHost = (eventOrFlow.src_host || '').toLowerCase();
+            const dstHost = (eventOrFlow.dst_host || '').toLowerCase();
+            const src = (eventOrFlow.src || '').toLowerCase();
+            const dst = (eventOrFlow.dst || '').toLowerCase();
+
+            const isUkLaptop = (val) => {
+                return val.includes('laptop-uk') ||
+                    val.includes('laptop_uk') ||
+                    val.includes('laptop uk');
+            };
+
+            return isUkLaptop(srcHost) || isUkLaptop(dstHost) || isUkLaptop(src) || isUkLaptop(dst);
         };
-        
-        return isUkLaptop(srcHost) || isUkLaptop(dstHost) || isUkLaptop(src) || isUkLaptop(dst);
-    };
 
-    const leftAnomalies = document.getElementById('aiAnomalies');
-    if (leftAnomalies) {
-        const anomalyCount = state.streamEvents.filter(e => e.isAnomaly && !e.isSafe && !isUserLaptop(e)).length;
-        leftAnomalies.innerText = anomalyCount;
-        leftAnomalies.style.color = anomalyCount > 0 ? 'var(--status-danger)' : 'var(--text-secondary)';
-    }
+        const leftAnomalies = document.getElementById('aiAnomalies');
+        if (leftAnomalies) {
+            const anomalyCount = state.streamEvents.filter(e => e.isAnomaly && !e.isSafe && !isUserLaptop(e)).length;
+            leftAnomalies.innerText = anomalyCount;
+            leftAnomalies.style.color = anomalyCount > 0 ? 'var(--status-danger)' : 'var(--text-secondary)';
+        }
 
-    const leftSafeFlows = document.getElementById('aiSafeFlows');
-    if (leftSafeFlows) {
-        const wlCount = (state.whitelist || []).length;
-        leftSafeFlows.innerText = wlCount;
-        leftSafeFlows.style.color = wlCount > 0 ? 'var(--status-safe)' : 'var(--text-secondary)';
-    }
+        const leftSafeFlows = document.getElementById('aiSafeFlows');
+        if (leftSafeFlows) {
+            const wlCount = (state.whitelist || []).length;
+            leftSafeFlows.innerText = wlCount;
+            leftSafeFlows.style.color = wlCount > 0 ? 'var(--status-safe)' : 'var(--text-secondary)';
+        }
 
-    // Update bottom small telemetry status
-    if (state.streamEvents.length > 0) {
-        listEl.innerHTML = `
+        // Update bottom small telemetry status
+        if (state.streamEvents.length > 0) {
+            listEl.innerHTML = `
             <div class="radar-empty-state" style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
                 <div class="radar-pulse-indicator" style="width:8px; height:8px; background:var(--status-safe); border-radius:50%; margin-bottom:8px; box-shadow:0 0 8px var(--status-safe);"></div>
                 <span class="radar-empty-title" style="color:var(--status-safe); font-size:0.7rem; letter-spacing:1px;">ENGINE ACTIVE</span>
                 <span class="radar-empty-subtitle" style="font-size:0.6rem; opacity:0.5;">LIVE TELEMETRY STREAM ONLINE</span>
             </div>
         `;
-    } else {
-        listEl.innerHTML = `
+        } else {
+            listEl.innerHTML = `
             <div class="radar-empty-state">
                 <div class="radar-sweep-scanner"></div>
                 <span class="radar-empty-title">SYSTEM SECURE</span>
                 <span class="radar-empty-subtitle">MONITORING PACKET VECTORSTREAM</span>
             </div>
         `;
-    }
+        }
 
-    const anomalyListEl = document.getElementById('anomalyStreamList');
-    if (anomalyListEl) {
-        if (state.upperLeftFilter === 'SAFE') {
-            const whitelist = state.whitelist || [];
-            if (whitelist.length === 0) {
-                anomalyListEl.innerHTML = `
+        const anomalyListEl = document.getElementById('anomalyStreamList');
+        if (anomalyListEl) {
+            if (state.upperLeftFilter === 'SAFE') {
+                const whitelist = state.whitelist || [];
+                if (whitelist.length === 0) {
+                    anomalyListEl.innerHTML = `
                     <div class="radar-empty-state">
                         <span class="radar-empty-subtitle" style="font-family: 'Courier New', monospace; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); text-transform: uppercase;">NO SECURED VECTORS</span>
                     </div>
                 `;
-            } else {
-                anomalyListEl.innerHTML = whitelist.map((item, index) => {
-                    const id = `whitelist-${index}`;
-                    const cls = 'matrix-item is-safe';
-                    const statusStr = '[SECURED]';
-                    
-                    const actionBtn = `<button class="btn-mark-safe danger" onclick="event.stopPropagation(); removeWhitelistEntry('${item.src}', '${item.dst}', ${item.dport})" style="font-size: 0.6rem; padding: 1px 4px; background: rgba(255, 42, 42, 0.15); border-color: rgba(255, 42, 42, 0.4); color: var(--status-danger);">UNSECURE</button>`;
-                    const detailsLine = `<div class="matrix-line" style="margin-top:2px;"><span>RULE ESTABLISHED</span>${actionBtn}</div>`;
+                } else {
+                    anomalyListEl.innerHTML = whitelist.map((item, index) => {
+                        const id = `whitelist-${index}`;
+                        const cls = 'matrix-item is-safe';
+                        const statusStr = '[SECURED]';
 
-                    const srcDisplay = item.src;
-                    const dstDisplay = item.dst;
-                    
-                    const isLocal = checkIsLocalConnection(item.src, item.dst);
-                    const localTag = isLocal ? '<span class="local-tag" style="font-size: 0.55rem; color: var(--status-safe); border: 1px solid rgba(0, 230, 118, 0.4); padding: 0px 3px; border-radius: 2px; margin-left: 5px; font-weight: 800;">LOCAL</span>' : '';
+                        const actionBtn = `<button class="btn-mark-safe danger" onclick="event.stopPropagation(); removeWhitelistEntry('${item.src}', '${item.dst}', ${item.dport})" style="font-size: 0.6rem; padding: 1px 4px; background: rgba(255, 42, 42, 0.15); border-color: rgba(255, 42, 42, 0.4); color: var(--status-danger);">UNSECURE</button>`;
+                        const detailsLine = `<div class="matrix-line" style="margin-top:2px;"><span>RULE ESTABLISHED</span>${actionBtn}</div>`;
 
-                    return `
+                        const srcDisplay = item.src;
+                        const dstDisplay = item.dst;
+
+                        const isLocal = checkIsLocalConnection(item.src, item.dst);
+                        const localTag = isLocal ? '<span class="local-tag" style="font-size: 0.55rem; color: var(--status-safe); border: 1px solid rgba(0, 230, 118, 0.4); padding: 0px 3px; border-radius: 2px; margin-left: 5px; font-weight: 800;">LOCAL</span>' : '';
+
+                        return `
                         <div id="stream-item-${id}" class="${cls}" onclick="selectWhitelistItem('${item.src}')" style="cursor: pointer;">
                             <div class="matrix-line" style="font-weight: 700; opacity: 0.7;">
                                 <span>> EXCEPTION${localTag}</span>
@@ -252,69 +252,69 @@ export function renderStreamList() {
                             ${detailsLine}
                         </div>
                     `;
-                }).join('');
-            }
-        } else {
-            const filteredEvents = state.streamEvents.filter(e => {
-                if (isUserLaptop(e)) return false;
-                return e.isAnomaly && !e.isSafe;
-            });
+                    }).join('');
+                }
+            } else {
+                const filteredEvents = state.streamEvents.filter(e => {
+                    if (isUserLaptop(e)) return false;
+                    return e.isAnomaly && !e.isSafe;
+                });
 
-            if (filteredEvents.length === 0) {
-                anomalyListEl.innerHTML = `
+                if (filteredEvents.length === 0) {
+                    anomalyListEl.innerHTML = `
                     <div class="radar-empty-state">
                         <span class="radar-empty-subtitle">NO EVENTS DETECTED</span>
                     </div>
                 `;
-            } else {
-                anomalyListEl.innerHTML = filteredEvents.map(event => {
-                    const isSel = isStreamEventSelected(event);
-                    
-                    let cls = 'matrix-item';
-                    let statusStr = '';
-                    let detailsLine = '';
+                } else {
+                    anomalyListEl.innerHTML = filteredEvents.map(event => {
+                        const isSel = isStreamEventSelected(event);
 
-                    if (!event.isAnomaly) {
-                        cls += ` is-normal ${isSel ? 'is-selected' : ''}`;
-                        statusStr = '[OK]';
-                    } else if (event.isSafe) {
-                        cls += ` is-safe ${isSel ? 'is-selected' : ''}`;
-                        statusStr = '[SECURED]';
-                        const lossStr = event.reconstruction_error ? ` L:${parseFloat(event.reconstruction_error).toFixed(4)}` : '';
-                        if (lossStr) {
-                            detailsLine = `<div class="matrix-line" style="margin-top:2px;"><span>${lossStr}</span></div>`;
-                        }
-                    } else {
-                        cls += ` is-anomaly ${isSel ? 'is-selected' : ''}`;
-                        statusStr = '[BREACH]';
-                        const lossStr = event.reconstruction_error ? ` L:${parseFloat(event.reconstruction_error).toFixed(4)}` : '';
-                        const actionBtn = `<button class="btn-mark-safe" onclick="event.stopPropagation(); markStreamEventSafe('${event.id}')" style="font-size: 0.6rem; padding: 1px 4px;">SECURE</button>`;
-                        detailsLine = `<div class="matrix-line" style="margin-top:2px;"><span>${lossStr}</span>${actionBtn}</div>`;
-                    }
+                        let cls = 'matrix-item';
+                        let statusStr = '';
+                        let detailsLine = '';
 
-                    const srcDisplay = event.src_host && event.src_host !== event.src ? event.src_host : event.src;
-                    const dstDisplay = event.dst_host && event.dst_host !== event.dst ? event.dst_host : event.dst;
-                    
-                    const isLocal = checkIsLocalConnection(event.src, event.dst);
-                    
-                    let localTag = '';
-                    if (isLocal) {
-                        let tagColor = 'var(--text-secondary)';
-                        let tagBorder = 'rgba(255,255,255,0.2)';
                         if (!event.isAnomaly) {
-                            tagColor = 'var(--text-secondary)';
-                            tagBorder = 'rgba(255,255,255,0.25)';
+                            cls += ` is-normal ${isSel ? 'is-selected' : ''}`;
+                            statusStr = '[OK]';
                         } else if (event.isSafe) {
-                            tagColor = 'var(--status-safe)';
-                            tagBorder = 'rgba(0, 230, 118, 0.4)';
+                            cls += ` is-safe ${isSel ? 'is-selected' : ''}`;
+                            statusStr = '[SECURED]';
+                            const lossStr = event.reconstruction_error ? ` L:${parseFloat(event.reconstruction_error).toFixed(4)}` : '';
+                            if (lossStr) {
+                                detailsLine = `<div class="matrix-line" style="margin-top:2px;"><span>${lossStr}</span></div>`;
+                            }
                         } else {
-                            tagColor = 'var(--status-danger)';
-                            tagBorder = 'rgba(255, 42, 42, 0.4)';
+                            cls += ` is-anomaly ${isSel ? 'is-selected' : ''}`;
+                            statusStr = '[BREACH]';
+                            const lossStr = event.reconstruction_error ? ` L:${parseFloat(event.reconstruction_error).toFixed(4)}` : '';
+                            const actionBtn = `<button class="btn-mark-safe" onclick="event.stopPropagation(); markStreamEventSafe('${event.id}')" style="font-size: 0.6rem; padding: 1px 4px;">SECURE</button>`;
+                            detailsLine = `<div class="matrix-line" style="margin-top:2px;"><span>${lossStr}</span>${actionBtn}</div>`;
                         }
-                        localTag = `<span class="local-tag" style="font-size: 0.55rem; color: ${tagColor}; border: 1px solid ${tagBorder}; padding: 0px 3px; border-radius: 2px; margin-left: 5px; font-weight: 800;">LOCAL</span>`;
-                    }
 
-                    return `
+                        const srcDisplay = event.src_host && event.src_host !== event.src ? event.src_host : event.src;
+                        const dstDisplay = event.dst_host && event.dst_host !== event.dst ? event.dst_host : event.dst;
+
+                        const isLocal = checkIsLocalConnection(event.src, event.dst);
+
+                        let localTag = '';
+                        if (isLocal) {
+                            let tagColor = 'var(--text-secondary)';
+                            let tagBorder = 'rgba(255,255,255,0.2)';
+                            if (!event.isAnomaly) {
+                                tagColor = 'var(--text-secondary)';
+                                tagBorder = 'rgba(255,255,255,0.25)';
+                            } else if (event.isSafe) {
+                                tagColor = 'var(--status-safe)';
+                                tagBorder = 'rgba(0, 230, 118, 0.4)';
+                            } else {
+                                tagColor = 'var(--status-danger)';
+                                tagBorder = 'rgba(255, 42, 42, 0.4)';
+                            }
+                            localTag = `<span class="local-tag" style="font-size: 0.55rem; color: ${tagColor}; border: 1px solid ${tagBorder}; padding: 0px 3px; border-radius: 2px; margin-left: 5px; font-weight: 800;">LOCAL</span>`;
+                        }
+
+                        return `
                         <div id="stream-item-${event.id}" class="${cls.trim()}" onclick="selectStreamEvent('${event.id}')">
                             <div class="matrix-line" style="font-weight: 700; opacity: 0.7;">
                                 <span>> ${event.time}${localTag}</span>
@@ -328,113 +328,113 @@ export function renderStreamList() {
                             ${detailsLine}
                         </div>
                     `;
-                }).join('');
-            }
-        }
-    }
-
-    // Aggregate data by src IP
-    const userStats = {};
-    if (state.upperLeftFilter === 'SAFE') {
-        const whitelist = state.whitelist || [];
-        for (const item of whitelist) {
-            if (isUserLaptop(item)) {
-                continue;
-            }
-            if (!userStats[item.src]) {
-                let hostVal = item.src;
-                const matchingEvent = state.streamEvents.find(e => e.src === item.src && e.src_host);
-                if (matchingEvent) {
-                    hostVal = matchingEvent.src_host;
+                    }).join('');
                 }
-                userStats[item.src] = {
-                    src: item.src,
-                    host: hostVal,
-                    packets: 0,
-                    anomalies: 0,
-                    maxLoss: 0,
-                    isSecured: true
-                };
-            }
-            // Count matching safe/secured packets in streamEvents, default to 1 rule exception
-            const matchCount = state.streamEvents.filter(e => e.src === item.src && e.dst === item.dst && e.dport === item.dport).length;
-            userStats[item.src].packets += matchCount || 1;
-        }
-    } else {
-        for (const ev of state.streamEvents) {
-            if (isUserLaptop(ev)) {
-                continue;
-            }
-
-            if (!userStats[ev.src]) {
-                userStats[ev.src] = {
-                    src: ev.src,
-                    host: ev.src_host && ev.src_host !== ev.src ? ev.src_host : ev.src,
-                    packets: 0,
-                    anomalies: 0,
-                    maxLoss: 0
-                };
-            }
-            userStats[ev.src].packets++;
-            if (ev.isAnomaly && !ev.isSafe) {
-                userStats[ev.src].anomalies++;
-            }
-            if (ev.reconstruction_error > userStats[ev.src].maxLoss) {
-                userStats[ev.src].maxLoss = ev.reconstruction_error;
             }
         }
-    }
 
-    // Convert to array and prepare for priority group sorting
-    let filteredUsers = Object.values(userStats);
+        // Aggregate data by src IP
+        const userStats = {};
+        if (state.upperLeftFilter === 'SAFE') {
+            const whitelist = state.whitelist || [];
+            for (const item of whitelist) {
+                if (isUserLaptop(item)) {
+                    continue;
+                }
+                if (!userStats[item.src]) {
+                    let hostVal = item.src;
+                    const matchingEvent = state.streamEvents.find(e => e.src === item.src && e.src_host);
+                    if (matchingEvent) {
+                        hostVal = matchingEvent.src_host;
+                    }
+                    userStats[item.src] = {
+                        src: item.src,
+                        host: hostVal,
+                        packets: 0,
+                        anomalies: 0,
+                        maxLoss: 0,
+                        isSecured: true
+                    };
+                }
+                // Count matching safe/secured packets in streamEvents, default to 1 rule exception
+                const matchCount = state.streamEvents.filter(e => e.src === item.src && e.dst === item.dst && e.dport === item.dport).length;
+                userStats[item.src].packets += matchCount || 1;
+            }
+        } else {
+            for (const ev of state.streamEvents) {
+                if (isUserLaptop(ev)) {
+                    continue;
+                }
 
-    // Sort by prioritized groups:
-    // Group 0: External Anomaly
-    // Group 1: Local Anomaly
-    // Group 2: External Normal
-    // Group 3: Local Normal
-    // Tie-breaker within groups: Anomalies DESC, then Packets DESC
-    const sortedUsers = filteredUsers.sort((a, b) => {
-        const isLocalA = checkIsLocalIp(a.src);
-        const isLocalB = checkIsLocalIp(b.src);
-        
-        const hasAnomalyA = a.anomalies > 0;
-        const hasAnomalyB = b.anomalies > 0;
-        
-        const groupA = hasAnomalyA ? (isLocalA ? 1 : 0) : (isLocalA ? 3 : 2);
-        const groupB = hasAnomalyB ? (isLocalB ? 1 : 0) : (isLocalB ? 3 : 2);
-        
-        if (groupA !== groupB) {
-            return groupA - groupB;
+                if (!userStats[ev.src]) {
+                    userStats[ev.src] = {
+                        src: ev.src,
+                        host: ev.src_host && ev.src_host !== ev.src ? ev.src_host : ev.src,
+                        packets: 0,
+                        anomalies: 0,
+                        maxLoss: 0
+                    };
+                }
+                userStats[ev.src].packets++;
+                if (ev.isAnomaly && !ev.isSafe) {
+                    userStats[ev.src].anomalies++;
+                }
+                if (ev.reconstruction_error > userStats[ev.src].maxLoss) {
+                    userStats[ev.src].maxLoss = ev.reconstruction_error;
+                }
+            }
         }
-        
-        if (b.anomalies !== a.anomalies) return b.anomalies - a.anomalies;
-        return b.packets - a.packets;
-    }).slice(0, 25); // Show up to 25 top users
 
-    let rowsHtml = '';
-    if (sortedUsers.length === 0) {
-        rowsHtml = `
+        // Convert to array and prepare for priority group sorting
+        let filteredUsers = Object.values(userStats);
+
+        // Sort by prioritized groups:
+        // Group 0: External Anomaly
+        // Group 1: Local Anomaly
+        // Group 2: External Normal
+        // Group 3: Local Normal
+        // Tie-breaker within groups: Anomalies DESC, then Packets DESC
+        const sortedUsers = filteredUsers.sort((a, b) => {
+            const isLocalA = checkIsLocalIp(a.src);
+            const isLocalB = checkIsLocalIp(b.src);
+
+            const hasAnomalyA = a.anomalies > 0;
+            const hasAnomalyB = b.anomalies > 0;
+
+            const groupA = hasAnomalyA ? (isLocalA ? 1 : 0) : (isLocalA ? 3 : 2);
+            const groupB = hasAnomalyB ? (isLocalB ? 1 : 0) : (isLocalB ? 3 : 2);
+
+            if (groupA !== groupB) {
+                return groupA - groupB;
+            }
+
+            if (b.anomalies !== a.anomalies) return b.anomalies - a.anomalies;
+            return b.packets - a.packets;
+        }).slice(0, 25); // Show up to 25 top users
+
+        let rowsHtml = '';
+        if (sortedUsers.length === 0) {
+            rowsHtml = `
             <tr>
                 <td colspan="4" style="text-align:center; color: var(--text-tertiary); font-family: 'Courier New', monospace; font-size: 0.62rem; padding: 15px 0; letter-spacing: 0.5px;">
                     NO ACTIVE USERS IN CURRENT STATE
                 </td>
             </tr>
         `;
-    } else {
-        rowsHtml = sortedUsers.map(u => {
-            const isThreat = u.anomalies > 0;
-            const isLocked = state.lockedOnIp === u.src;
-            const cls = `tactical-row ${isThreat ? 'is-threat' : ''} ${isLocked ? 'is-locked' : ''}`;
-            
-            let riskPct = 0;
-            if (isThreat) {
-                riskPct = Math.min(50 + (u.anomalies / u.packets) * 50, 100);
-            } else {
-                riskPct = Math.min((u.maxLoss / 0.05) * 40, 40); 
-            }
+        } else {
+            rowsHtml = sortedUsers.map(u => {
+                const isThreat = u.anomalies > 0;
+                const isLocked = state.lockedOnIp === u.src;
+                const cls = `tactical-row ${isThreat ? 'is-threat' : ''} ${isLocked ? 'is-locked' : ''}`;
 
-            return `
+                let riskPct = 0;
+                if (isThreat) {
+                    riskPct = Math.min(50 + (u.anomalies / u.packets) * 50, 100);
+                } else {
+                    riskPct = Math.min((u.maxLoss / 0.05) * 40, 40);
+                }
+
+                return `
                 <tr class="${cls}" title="${u.src}" onclick="toggleLockOn('${u.src}')" style="cursor: pointer; ${isLocked ? 'background: rgba(255, 42, 42, 0.2); border-left: 2px solid var(--status-danger);' : ''}">
                     <td style="max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         ${u.host}
@@ -448,11 +448,11 @@ export function renderStreamList() {
                     </td>
                 </tr>
             `;
-        }).join('');
-    }
+            }).join('');
+        }
 
-    if (sortedUsers.length > 0) {
-        listEl.innerHTML = `
+        if (sortedUsers.length > 0) {
+            listEl.innerHTML = `
             <table class="tactical-matrix-table">
                 <thead>
                     <tr>
@@ -467,7 +467,7 @@ export function renderStreamList() {
                 </tbody>
             </table>
         `;
-    }
+        }
     });
 }
 
@@ -577,7 +577,7 @@ export function renderActiveFlowsList() {
         // Update the right panel counter based on the active filter, but keep base bar showing total
         const countEl = document.getElementById('activeFlowsCount');
         const barFlows = document.getElementById('barFlows');
-        
+
         if (countEl) countEl.innerText = displayFlows.length;
         if (barFlows) barFlows.innerText = state.recentFlows.length;
 
@@ -624,10 +624,10 @@ export function renderActiveFlowsList() {
             let blipsHtml = displayFlows.map(f => {
                 let top = 50;
                 let left = 50;
-                
+
                 const hash = Array.from(f.src).reduce((acc, char) => acc + char.charCodeAt(0), 0);
                 const angle = (hash % 360) * Math.PI / 180;
-                
+
                 const isLocal = checkIsLocalConnection(f.src, f.dst);
                 if (!isLocal) {
                     // Outer rings for external
@@ -644,7 +644,7 @@ export function renderActiveFlowsList() {
                 const isSel = isFlowSelected(f);
                 const cls = `radar-blip ${f.isAnomaly ? 'is-anomaly' : ''} ${isSel ? 'is-selected' : ''}`.trim();
                 const size = f.isAnomaly ? 8 : 4;
-                
+
                 return `
                     <div class="${cls}" style="top: ${top}%; left: ${left}%; width: ${size}px; height: ${size}px;" title="${f.src} -> ${f.dst}:${f.dport}" onclick="selectFlow('${f.id}')">
                         ${f.isAnomaly ? '<div class="radar-blip-ring"></div>' : ''}
@@ -656,7 +656,7 @@ export function renderActiveFlowsList() {
                 blipsContainer.innerHTML = blipsHtml;
             }
         }
-        
+
         updatePanelDots();
     });
 }
@@ -829,17 +829,17 @@ function renderNotificationList() {
         `).join('');
 }
 
-window.selectNotification = function(id) {
+window.selectNotification = function (id) {
     const notif = state.notificationHistory.find(n => n.id === id);
     if (!notif || !notif.rawData) return;
-    
+
     // Auto-close notifications panel overlay to show the globe transition
     const overlay = document.getElementById('notifOverlay');
     if (overlay) overlay.classList.remove('active');
-    
+
     import('./globe_v2.js').then(m => {
         m.addGlobeArc(notif.rawData, true);
-        
+
         const streamEvent = state.streamEvents?.find(e => e.src === notif.rawData.src && e.dst === notif.rawData.dst && e.dport === notif.rawData.dport);
         if (streamEvent) {
             window.selectStreamEvent(streamEvent.id);
@@ -1101,7 +1101,7 @@ export async function runFullSecurityScan() {
         btn.innerText = 'Scanning...';
         btn.disabled = true;
     }
-    
+
     body.innerHTML = `
         <div class="radar-empty-state">
             <div class="radar-sweep-scanner"></div>
@@ -1241,7 +1241,7 @@ function renderScannerResults(data) {
     // 5. Typewriter Effect for Recommendations
     const terminal = document.getElementById('remediationTerminal');
     const recsList = (data.recommendations && data.recommendations.recommendations) ? data.recommendations.recommendations : [];
-    
+
     let rawText = "INITIATING POST-AUDIT REMEDIATION SEQUENCE...\n";
     rawText += "ANALYZING SYSTEM VULNERABILITIES...\n\n";
 
@@ -1278,7 +1278,7 @@ function typewriterEffect(element, text, speed) {
     let i = 0;
     element.innerHTML = '<span id="tw-content"></span><span class="terminal-cursor"></span>';
     const content = element.querySelector('#tw-content');
-    
+
     function typeWriter() {
         if (i < text.length) {
             content.textContent += text.charAt(i);
@@ -1296,7 +1296,7 @@ function typewriterEffect(element, text, speed) {
 function typewriterEffectAppend(element, text, speed) {
     const content = element.querySelector('#tw-content');
     if (!content) return;
-    
+
     let i = 0;
     function type() {
         if (i < text.length) {
@@ -1330,7 +1330,7 @@ function handleTerminalCommand(cmd) {
     const command = parts[0].toLowerCase();
 
     if (command === '/help') {
-        const helpText = 
+        const helpText =
             `\nAVAILABLE COMMANDS:\n` +
             `  /help                   - Display this guide\n` +
             `  /clear                  - Clear terminal buffer\n` +
@@ -1365,13 +1365,13 @@ function handleTerminalCommand(cmd) {
 async function triggerPatchSequence(target, terminal) {
     patchingActive = true;
     audio.playPing();
-    
+
     let category = 'ALL';
     let targetName = 'ALL SYSTEM DEFENSES';
-    
+
     if (target !== 'ALL' && !isNaN(target)) {
-        const recsList = (latestScanData && latestScanData.recommendations && latestScanData.recommendations.recommendations) 
-            ? latestScanData.recommendations.recommendations 
+        const recsList = (latestScanData && latestScanData.recommendations && latestScanData.recommendations.recommendations)
+            ? latestScanData.recommendations.recommendations
             : [];
         const threat = recsList[target - 1];
         if (threat) {
@@ -1379,23 +1379,23 @@ async function triggerPatchSequence(target, terminal) {
             const cat = threat.category || '';
             const title = (threat.title || '').toLowerCase();
             const desc = (threat.description || '').toLowerCase();
-            
+
             if (cat === 'Ports') category = 'Ports';
             else if (cat === 'Firewall' || title.includes('firewall') || desc.includes('firewall')) category = 'Firewall';
             else if (cat === 'User Account Control' || title.includes('uac') || desc.includes('uac') || title.includes('user account control')) category = 'User Account Control';
             else if (title.includes('service') || desc.includes('service') || title.includes('remoteregistry') || title.includes('tlntsvr')) category = 'Remote Services';
         }
     }
-    
+
     typewriterEffectAppend(terminal, `\n[>] INITIATING MITIGATION PROTOCOL [TARGET: ${targetName}]...\n`, 4);
-    
+
     setTimeout(() => {
         typewriterEffectAppend(terminal, `[1/3] EXECUTING REAL-TIME SECURITY ENFORCEMENT ENGINE...\n`, 4);
     }, 600);
-    
+
     setTimeout(async () => {
         typewriterEffectAppend(terminal, `      >> PARSING ACTIVE PROTECTION POLICIES FOR CATEGORY: ${category.toUpperCase()}...\n`, 4);
-        
+
         try {
             const res = await fetch('/api/patch-vulnerability', {
                 method: 'POST',
@@ -1403,11 +1403,11 @@ async function triggerPatchSequence(target, terminal) {
                 body: JSON.stringify({ category })
             });
             const resp = await res.json();
-            
+
             if (resp.status === 'success') {
                 setTimeout(() => {
                     typewriterEffectAppend(terminal, `[2/3] DEPLOYING LOCAL OPERATING SYSTEM SECURITY PATCHES...\n`, 4);
-                    
+
                     const patchData = resp.data || [];
                     patchData.forEach((item, idx) => {
                         setTimeout(() => {
@@ -1415,18 +1415,18 @@ async function triggerPatchSequence(target, terminal) {
                             typewriterEffectAppend(terminal, `      ${prefix} [${item.category}]: ${item.message}\n`, 4);
                         }, idx * 400);
                     });
-                    
+
                     setTimeout(() => {
                         if (!resp.is_admin) {
                             typewriterEffectAppend(terminal, `\n      [!] WARNING: Oversight did not run as Administrator.\n`, 4);
                             typewriterEffectAppend(terminal, `          Some policy changes require high privileges to take effect.\n`, 4);
                         }
-                        
+
                         typewriterEffectAppend(terminal, `\n[3/3] RE-AUDITING SYSTEM EXPOSURE STATUS...\n`, 4);
                         setTimeout(() => {
                             typewriterEffectAppend(terminal, `      [====================================] 100% (RE-AUDIT COMPLETE)\n`, 4);
                             typewriterEffectAppend(terminal, `[+] ADVANCED THREAT REMEDIATION SEQUENCE COMPLETED!\n`, 4);
-                            
+
                             patchingActive = false;
                             applySecurityPatchSuccess(category);
                         }, 1200);
@@ -1445,14 +1445,14 @@ async function triggerPatchSequence(target, terminal) {
 
 function applySecurityPatchSuccess(category = 'ALL') {
     audio.playPing();
-    
+
     // 1. Elevate Gauges (Correcting logic inversion: high score means high security/safety)
     const riskDial = document.querySelector('.risk-gauge-container');
     if (riskDial) {
         riskDial.style.setProperty('--gauge-percent', '95');
         riskDial.style.setProperty('--gauge-color', 'var(--status-safe)');
     }
-    
+
     const riskVal = document.getElementById('riskVal');
     if (riskVal) {
         riskVal.innerText = '95';
@@ -1554,7 +1554,7 @@ export async function renderWhitelistManager() {
     try {
         const response = await fetch('/api/whitelist');
         const result = await response.json();
-        
+
         if (result.status === 'success') {
             const data = result.data || [];
             if (data.length === 0) {
@@ -1625,7 +1625,7 @@ export async function removeWhitelistEntry(src, dst, dport) {
             body: JSON.stringify({ src, dst, dport })
         });
         const result = await response.json();
-        
+
         if (result.status === 'success') {
             showAnomalyToast({
                 time: nowTimeStr(),

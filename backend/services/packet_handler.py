@@ -1,7 +1,8 @@
 from datetime import datetime
-from globals import socketio, traffic_stats_lock, traffic_stats, flow_manager, anomaly_model
+from globals import socketio, traffic_stats_lock, traffic_stats, flow_manager, anomaly_model, model_lock
 from ai_modules.feature_extractor import LIVE_FEATURES
 from services.dns_resolver import dns_cache
+from services.geolocator import geolocator
 
 def packet_callback(packet_info):
     # callback for raw packets, updates stats and feeds flow manager
@@ -23,7 +24,15 @@ def packet_callback(packet_info):
                 traffic_stats['_ip_bytes'][src_ip] = traffic_stats['_ip_bytes'].get(src_ip, 0) + pkt_size
             if dst_ip:
                 traffic_stats['_ip_bytes'][dst_ip] = traffic_stats['_ip_bytes'].get(dst_ip, 0) + pkt_size
-            
+
+            # Trim _ip_bytes every 100 packets to prevent unbounded growth
+            if traffic_stats['total_packets'] % 100 == 0:
+                ip_bytes = traffic_stats['_ip_bytes']
+                if len(ip_bytes) > 200:
+                    # Keep only top 100 IPs by volume
+                    trimmed = dict(sorted(ip_bytes.items(), key=lambda x: x[1], reverse=True)[:100])
+                    traffic_stats['_ip_bytes'] = trimmed
+
             # Periodic recalculation of top talkers and longest flows (every 5 packets)
             if traffic_stats['total_packets'] % 5 == 0 or not traffic_stats.get('top_services'):
                 sorted_ips = sorted(traffic_stats['_ip_bytes'].items(), key=lambda x: x[1], reverse=True)[:5]
@@ -70,9 +79,16 @@ def packet_callback(packet_info):
             
             # Periodic memory cleanup of the tracking dictionary
             if len(packet_callback.last_emitted) > 500:
-                expired_keys = [k for k, v in packet_callback.last_emitted.items() if current_time - v > 5.0]
+                now = current_time
+                expired_keys = [k for k, v in packet_callback.last_emitted.items() if now - v > 5.0]
                 for k in expired_keys:
                     del packet_callback.last_emitted[k]
+                # Hard cap: if cleanup didn't shrink enough, drop oldest entries
+                if len(packet_callback.last_emitted) > 1000:
+                    sorted_keys = sorted(packet_callback.last_emitted.keys(),
+                                         key=lambda k: packet_callback.last_emitted[k])[:500]
+                    for k in sorted_keys:
+                        del packet_callback.last_emitted[k]
 
         # Evaluate expired flows against the security engine
         check_expired_flows()
@@ -127,116 +143,135 @@ def _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info):
 
 def check_expired_flows():
     # audits expired flows: first threat intel feed, then ONNX autoencoder
+    import numpy as np
+    from globals import anomaly_model, autoencoder_scaler, autoencoder_threshold, model_lock
+    from globals import manual_whitelist, manual_whitelist_lock
+    from security_modules.threat_intel import threat_intel
+
     try:
-        import numpy as np
-        from globals import anomaly_model, autoencoder_scaler, autoencoder_threshold
-        from globals import manual_whitelist, manual_whitelist_lock
-        from security_modules.threat_intel import threat_intel
-        from services.geolocator import geolocator
-        
         expired = flow_manager.get_expired_flows()
-        if expired is not None and not expired.empty:
-            
-            # Stage 1: threat intel check
-            clean_indices = []
-            
-            for i, row in expired.iterrows():
+        if expired is None or expired.empty:
+            return
+
+        # Stage 1: threat intel check
+        clean_indices = []
+
+        for i, row in expired.iterrows():
+            try:
                 src_ip = row.get('src')
                 dst_ip = row.get('dst')
-                
+
                 # Check if either endpoint exists in the global threat blocklist
                 is_threat = threat_intel.is_malicious(src_ip) or threat_intel.is_malicious(dst_ip)
-                
+
                 if is_threat:
                     src_str = str(src_ip)
                     dst_str = str(dst_ip)
                     geo_info = geolocator.get_location(src_str)
                     if not geo_info:
                         geo_info = geolocator.get_location(dst_str)
-                        
+
                     _emit_anomaly(row, 'Threat Intelligence Blocklist', 1.0, geo_info)
                 else:
                     clean_indices.append(i)
-                    
-            if not clean_indices:
-                return
-                
-            clean_expired = expired.loc[clean_indices]
-            
-            # Stage 2: deep learning/autoencoder check
-            if anomaly_model and autoencoder_scaler:
-                # Pre-process flow features for model inference
-                df_to_predict = clean_expired.reindex(columns=LIVE_FEATURES).fillna(0)
-                
-                # Normalize data using the pre-fitted scaler
-                scaled_data = autoencoder_scaler.transform(df_to_predict).astype(np.float32)
-                
-                # Execute inference via ONNX Runtime
-                input_name = anomaly_model.get_inputs()[0].name
-                reconstructed = anomaly_model.run(None, {input_name: scaled_data})[0]
-                
-                # Calculate Reconstruction Error (Mean Squared Error)
-                mse = np.mean((scaled_data - reconstructed) ** 2, axis=1)
+            except Exception as e:
+                print(f"[ERROR] Threat intel check failed for flow: {e}")
+                # Still keep this flow for stage 2 if possible
+                clean_indices.append(i)
 
-                emitted_normals = 0
+        if not clean_indices:
+            return
 
-                for idx, error in enumerate(mse):
-                    flow_info = clean_expired.iloc[idx]
-                    
-                    src_str = str(flow_info.get('src', 'N/A'))
-                    dst_str = str(flow_info.get('dst', 'N/A'))
-                    dport_int = int(flow_info.get('dport', 0))
-                    
-                    # Fetch Geolocation
-                    geo_info = geolocator.get_location(src_str)
-                    if not geo_info:
-                        geo_info = geolocator.get_location(dst_str)
-                    
-                    if error > autoencoder_threshold:  # Statistical outlier detected
-                        
-                        # Verify against user-defined manual whitelist
-                        is_whitelisted = False
-                        with manual_whitelist_lock:
-                            if (src_str, dst_str, dport_int) in manual_whitelist:
-                                is_whitelisted = True
-                        
-                        if is_whitelisted:
-                            from globals import baseline_manager
-                            baseline_manager.save_flow(flow_info.to_dict())
-                            if emitted_normals < 5:
-                                _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info)
-                                emitted_normals += 1
-                            continue
-                        
-                        _emit_anomaly(flow_info, 'AI Behavioral Anomaly', error, geo_info)
-                    else:
-                        # Flow confirmed as within statistical baseline
-                        from globals import baseline_manager
-                        baseline_manager.save_flow(flow_info.to_dict())
-                        # Limit emissions per batch to optimize WebSocket bandwidth
-                        if emitted_normals < 5:
-                            _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info)
-                            emitted_normals += 1
-            else:
-                # Fallback: if model is not loaded (e.g. initial training phase),
-                # treat all non-threat flows as normal baseline traffic so they display on frontend
-                emitted_normals = 0
-                for _, row in clean_expired.iterrows():
-                    src_str = str(row.get('src', 'N/A'))
-                    dst_str = str(row.get('dst', 'N/A'))
-                    dport_int = int(row.get('dport', 0))
-                    
-                    geo_info = geolocator.get_location(src_str)
-                    if not geo_info:
-                        geo_info = geolocator.get_location(dst_str)
-                        
-                    from globals import baseline_manager
-                    baseline_manager.save_flow(row.to_dict())
-                        
-                    if emitted_normals < 5:
-                        _emit_normal_flow(src_str, dst_str, dport_int, 0.0, geo_info)
-                        emitted_normals += 1
+        clean_expired = expired.loc[clean_indices]
+
+        # Stage 2: deep learning/autoencoder check
+        if anomaly_model and autoencoder_scaler:
+            with model_lock:
+                # Re-check model under lock — it could have been reloaded
+                if anomaly_model is None or autoencoder_scaler is None:
+                    # Fall through to fallback
+                    pass
+                else:
+                    # Pre-process flow features for model inference
+                    df_to_predict = clean_expired.reindex(columns=LIVE_FEATURES).fillna(0)
+                    scaled_data = autoencoder_scaler.transform(df_to_predict).astype(np.float32)
+                    input_name = anomaly_model.get_inputs()[0].name
+                    reconstructed = anomaly_model.run(None, {input_name: scaled_data})[0]
+                    mse = np.mean((scaled_data - reconstructed) ** 2, axis=1)
+
+            _process_model_results(clean_expired, mse)
+        else:
+            # Fallback: no model loaded — treat all non-threat flows as normal
+            _process_fallback(clean_expired)
 
     except Exception as e:
         print(f"[ERROR] Flow analysis failed: {e}")
+
+
+def _process_model_results(clean_expired, mse):
+    """Process model inference results — individual row failures don't lose the batch."""
+    import numpy as np
+    from globals import manual_whitelist, manual_whitelist_lock
+
+    emitted_normals = 0
+    for idx, error in enumerate(mse):
+        try:
+            flow_info = clean_expired.iloc[idx]
+            src_str = str(flow_info.get('src', 'N/A'))
+            dst_str = str(flow_info.get('dst', 'N/A'))
+            dport_int = int(flow_info.get('dport', 0))
+
+            geo_info = geolocator.get_location(src_str)
+            if not geo_info:
+                geo_info = geolocator.get_location(dst_str)
+
+            if error > autoencoder_threshold:
+                # Statistical outlier — verify against manual whitelist
+                is_whitelisted = False
+                with manual_whitelist_lock:
+                    if (src_str, dst_str, dport_int) in manual_whitelist:
+                        is_whitelisted = True
+
+                if is_whitelisted:
+                    from globals import baseline_manager
+                    baseline_manager.save_flow(flow_info.to_dict())
+                    if emitted_normals < 5:
+                        _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info)
+                        emitted_normals += 1
+                    continue
+
+                _emit_anomaly(flow_info, 'AI Behavioral Anomaly', error, geo_info)
+            else:
+                from globals import baseline_manager
+                baseline_manager.save_flow(flow_info.to_dict())
+                if emitted_normals < 5:
+                    _emit_normal_flow(src_str, dst_str, dport_int, error, geo_info)
+                    emitted_normals += 1
+        except Exception as e:
+            print(f"[ERROR] Processing individual flow result failed: {e}")
+            continue
+
+
+def _process_fallback(clean_expired):
+    """Fallback when no AI model is loaded — all non-threat flows saved as baseline."""
+    emitted_normals = 0
+    for _, row in clean_expired.iterrows():
+        try:
+            src_str = str(row.get('src', 'N/A'))
+            dst_str = str(row.get('dst', 'N/A'))
+            dport_int = int(row.get('dport', 0))
+
+            geo_info = geolocator.get_location(src_str)
+            if not geo_info:
+                geo_info = geolocator.get_location(dst_str)
+
+            from globals import baseline_manager
+            baseline_manager.save_flow(row.to_dict())
+
+            if emitted_normals < 5:
+                _emit_normal_flow(src_str, dst_str, dport_int, 0.0, geo_info)
+                emitted_normals += 1
+        except Exception as e:
+            print(f"[ERROR] Fallback flow processing failed: {e}")
+            continue
 
