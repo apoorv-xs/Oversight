@@ -3,4 +3,26 @@ cd /d "%~dp0"
 echo ============================================================
 echo Starting Model Accuracy Evaluator...
 echo ============================================================
-python evaluate_model.py
+
+:: Check for virtual environment in project root and activate it
+if exist "..\..\venv\Scripts\activate.bat" (
+    echo Activating virtual environment...
+    call "..\..\venv\Scripts\activate.bat"
+)
+
+:: Use py launcher if available, fallback to python
+where py >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    set PYTHON_CMD=py
+) else (
+    set PYTHON_CMD=python
+)
+
+%PYTHON_CMD% evaluate_model.py
+
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo [FAIL] Script execution failed.
+    pause
+)
+

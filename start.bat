@@ -3,6 +3,12 @@ setlocal enabledelayedexpansion
 
 cd /d "%~dp0"
 
+:: Check for virtual environment in project root and activate it
+if exist "venv\Scripts\activate.bat" (
+    echo Activating virtual environment...
+    call "venv\Scripts\activate.bat"
+)
+
 echo ============================================================
 echo   OVERSIGHT - Adaptive Threat Engine
 echo   Building frontend + starting server
@@ -10,11 +16,17 @@ echo ============================================================
 echo.
 
 :: ─── Check Python ────────────────────────────────────────────────
-python --version >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo [FAIL] Python not found. Install Python 3.10+ and try again.
-    pause
-    exit /b 1
+set PYTHON_CMD=python
+where py >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    set PYTHON_CMD=py
+) else (
+    python --version >nul 2>&1
+    if !ERRORLEVEL! neq 0 (
+        echo [FAIL] Python not found. Install Python 3.10+ and try again.
+        pause
+        exit /b 1
+    )
 )
 
 :: ─── Check Node.js ────────────────────────────────────────────────
@@ -65,7 +77,7 @@ echo.
 echo ============================================================
 echo.
 
-python run.py
+%PYTHON_CMD% run.py
 
 echo.
 echo Server stopped.

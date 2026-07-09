@@ -27,10 +27,10 @@ Built to show how network telemetry can be intuitive, responsive, and visually e
 
 ## 📊 AI Model Benchmark
 
-Evaluated on the [**UNSW-NB15**](https://research.unsw.edu.au/projects/unsw-nb15-dataset) test set — a widely-used network intrusion detection benchmark created by the **University of New South Wales (Cyber Range Lab)** containing a realistic mix of modern normal traffic and 9 categories of synthetically-generated attack vectors.
+Evaluated against the [**UNSW-NB15**](https://research.unsw.edu.au/projects/unsw-nb15-dataset) test set (containing a realistic mix of normal traffic and 9 categories of synthetically-generated attack vectors) after being trained exclusively on custom/local normal network traffic baseline.
 
-- **Test Set**: 82,332 labeled network flows (45,332 attacks + 37,000 normal)
-- **Training**: Autoencoder trained exclusively on normal traffic (unsupervised — no attack labels used during training)
+- **Training**: Autoencoder trained exclusively on custom/local normal flow (unsupervised — no attack labels used during training)
+- **Test Set**: 82,332 labeled network flows (45,332 attacks + 37,000 normal) from the UNSW-NB15 dataset
 
 | Metric | Score |
 |:---|:---|
